@@ -23,8 +23,10 @@
 *.hex
 
 *.iso
-*.d
+mtask
 
+*.d
+*.map
 iso/*
 dep/*
 obj/*
