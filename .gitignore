@@ -24,3 +24,7 @@
 
 *.iso
 *.d
+
+iso/*
+dep/*
+obj/*

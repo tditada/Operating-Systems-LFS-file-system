@@ -1,5 +1,6 @@
 #include "kernel.h"
 #include "apps.h"
+#include "disk.h"
 
 #define BUFSIZE 200
 #define NARGS 20

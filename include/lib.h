@@ -8,6 +8,8 @@
 
 unsigned inb(unsigned ioaddr);
 void outb(unsigned ioaddr, unsigned data);
+unsigned inw(unsigned ioaddr);
+void outw(unsigned ioaddr, unsigned data);
 
 /* string.c */
 
@@ -25,6 +27,8 @@ void *memcpy(void *to, const void *from, unsigned n);
 void *memmove(void *dest, const void *src, unsigned n);
 void *memchr(const void *cs, int c, unsigned count);
 void *memset(void *s, int c, unsigned count);
+void strins(char *strA, char*strB, short pos);
+void promptdirup(char *prompt, short pos);
 
 /* rand.c */
 
@@ -56,6 +60,5 @@ unsigned separate(char *s, char *field[], unsigned nfields);
 /* atoi.c **/
 
 int atoi(const char *s);
-
 
 #endif
