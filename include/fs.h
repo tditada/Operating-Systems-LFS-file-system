@@ -1,43 +1,61 @@
-#define MAX_INODES 512
-#define MAX_IMAP 512
+#ifndef FS_H
+#define FS_H
 
-struct data {
+#define MAX_INODES 512
+#define MAX_IMAP 512 // ??? shouldn't they be the same?
+#define BUFFER_SIZE 128 // get an actual number for this, there's a formula!
+#define MAX_PATH 256
+
+typedef struct {
 	char * text;
 	int inum;
 	int offset;
 	void * next; //next block on the log
-};
+} file_data;
 
-typedef data * pdata;
+typedef struct {
+	char * name;
+	int inoden;
+} child_data;
 
-struct inode{
+typedef struct {
+	child_data * children;
+	int inum;
+	int offset;
+	void * next; //next block on the log
+} dir_data;
+
+typedef enum {
+	FS_FILE, FS_DIR
+} ftype
+
+typedef struct {
 	int num;
-	pdata[MAX_DATA] idata;
+	ftype type;
+	char[MAX_DATA] idata;
 	void * next;
-};
+} inode;
 
 typedef inode * pinode;
 
-struct imap{
+typedef struct {
 	pinode[MAX_INODES] map;
 	void * next;
-};
+} imap;
 
 typedef imap * pimap;
 
-struct checkpoint{
+typedef struct {
 	pimap[MAX_IMAP] map;
 	void * headsegment;
 	void * tailsegment;
-};
+} checkpoint;
 
+// Hacemos el CR en RAM
+// reservar buffer en RAM
+// mkdir de /
+int fs_init();
 
-int init(){
-	// Hacemos el CR en RAM
-	// reservar buffer en RAM
-	// mkdir de /
-}
+int fs_mkdir(char * path);
 
-int mkdir(char * pwd){
-	
-}
+#endif
