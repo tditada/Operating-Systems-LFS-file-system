@@ -2,7 +2,6 @@
 #define FS_H
 #include "kernel.h"
 
-#define MAX_IDATA 128
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
@@ -12,16 +11,20 @@ typedef struct {
 	char * text;
 	int inum;
 	int offset;
-} fdata;
+	void * next; //next block on the log
+} file_data;
 
 typedef struct {
 	char * name;
 	int inoden;
-} ddata_entry;
+} dir_data_pair;
 
 typedef struct {
-	ddata_entry[MAX_INODES] mdata;
-} ddata;
+	dir_data_pair[MAX_INODES] mdata;
+	int inum;
+	int offset;
+	void * next; //next block on the log
+} dir_data;
 
 typedef enum {
 	FS_FILE, FS_DIR
@@ -36,45 +39,31 @@ typedef struct {
 	int fsize;
 } inode;
 
-typedef disk_addr pinode;
+typedef inode * pinode;
 
 typedef struct {
 	int inoden;
-	pinode inode;
-} imap_entry;
+	pinode * inode;
+} imap_pair;
 
 typedef struct {
-	imap_entry[MAX_INODES] map;
+	imap_pair[MAX_INODES] map;
+	void * next;
 } imap;
 
-typedef disk_addr pimap;
+typedef imap * pimap;
 
 typedef struct {
 	char * dir_name;
 	int inoden;
-	pimap map;
-} cr_entry;
+	pimap myimap;
+}cr_entry;
 
 typedef struct {
 	cr_entry[MAX_IMAP] map;
-	disk_addr l_start;
-	disk_addr l_end;
+	disk_addr lstart;
+	disk_addr lend;
 } checkpoint;
-
-typedef struct {
-	unsigned short sector;
-	int offset;
-} disk_addr;
-
-typedef enum {
-	FS_IMAP, FS_INODE, 
-} lnode_t;
-
-typedef struct {
-	lnode next;
-	lnode_t type;
-	char data[0];
-} lnode;
 
 // Hacemos el CR en RAM
 // reservar buffer en RAM
