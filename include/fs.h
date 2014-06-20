@@ -45,6 +45,7 @@ typedef struct {
 typedef inode * pinode;
 
 typedef struct {
+	char * dir;
 	int inoden;
 	pinode * inode;
 }pinode_map_pair;

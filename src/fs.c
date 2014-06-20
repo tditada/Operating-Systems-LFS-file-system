@@ -69,7 +69,7 @@ int __get_inode_from_directory(pinode myinode, char * name){
 	}
 }
 
-//aca se hace t	odo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
+//aca se hace todo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
 // /home/pepe/sarasa/foo.txt te da el inode de foo.txt
 int __get_last_inode(char * filename) {
 	pimap myimap;
