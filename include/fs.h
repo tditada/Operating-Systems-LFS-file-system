@@ -3,7 +3,7 @@
 
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
-#define BUFFER_SIZE 128 // get an actual number for this, there's a formula!
+#define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 256
 
 typedef struct {
@@ -47,8 +47,8 @@ typedef imap * pimap;
 
 typedef struct {
 	pimap[MAX_IMAP] map;
-	void * headsegment;
-	void * tailsegment;
+	disk_addr lstart;
+	disk_addr lend;
 } checkpoint;
 
 // Hacemos el CR en RAM

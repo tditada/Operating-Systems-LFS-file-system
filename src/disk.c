@@ -3,8 +3,8 @@
 #define BIT(i) (1 << (i))
 
 void sendComm(int ata, int rdwr, unsigned short sector);
-void _read(int ata, char * ans, unsigned short sector, int offset, int count);
-void _write(int ata, char * msg, int bytes, unsigned short sector, int offset);
+void __read(int ata, char * ans, unsigned short sector, int offset, int count);
+void __write(int ata, char * msg, int bytes, unsigned short sector, int offset);
 
 unsigned short getDataRegister(int ata);
 void writeDataToRegister(int ata, char upper, char lower);
@@ -32,14 +32,14 @@ void ata_read(int ata, char* ans, int bytes, unsigned short sector, int offset) 
 		int size;
 		if (offset + bytes > SECTOR_SIZE) { // read remaining part from the sector
 			size = SECTOR_SIZE - offset;
-			_read(ata, ans, sector, offset, size);
+			__read(ata, ans, sector, offset, size);
 			sector++;
 			offset = 0;
 			bytes -= size;
 			ans += size;
 		} else { // The remaining msg fits in the actual sector
 			size = bytes;
-			_read(ata, ans, sector, offset, size);
+			__read(ata, ans, sector, offset, size);
 			offset += size;
 			bytes = 0;
 			ans += size;
@@ -48,7 +48,7 @@ void ata_read(int ata, char* ans, int bytes, unsigned short sector, int offset) 
 	mt_sti();
 }
 
-void _read(int ata, char * ans, unsigned short sector, int offset, int count) {
+void __read(int ata, char * ans, unsigned short sector, int offset, int count) {
 	char tmp[SECTOR_SIZE];
 	sendComm(ata, LBA_READ, sector);
 	/* Read sector*/
@@ -86,7 +86,7 @@ void ata_write(int ata, char * msg, int bytes, unsigned short sector,
 		int i;
 		if (offset + bytes > SECTOR_SIZE) { // Fill sector
 			size = SECTOR_SIZE - offset;
-			_write(ata, ans, size, sector, offset);
+			__write(ata, ans, size, sector, offset);
 			for (i = 0; i < 900000; i++) {
 			}
 			sector++;
@@ -95,7 +95,7 @@ void ata_write(int ata, char * msg, int bytes, unsigned short sector,
 			ans += size;
 		} else { // The remaining msg fits in the actual sector
 			size = bytes;
-			_write(ata, ans, size, sector, offset);
+			__write(ata, ans, size, sector, offset);
 			for (i = 0; i < 900000; i++) {
 			}
 			offset += size;
@@ -106,12 +106,12 @@ void ata_write(int ata, char * msg, int bytes, unsigned short sector,
 	mt_sti();
 }
 
-void _write(int ata, char * msg, int bytes, unsigned short sector, int offset) {
+void __write(int ata, char * msg, int bytes, unsigned short sector, int offset) {
 	char tmp[SECTOR_SIZE];
 	int i;
 	// Read actual sector because ATA always writes a complete sector!
 	// Don't overwrite previous values!
-	_read(ata, tmp, sector, 0, SECTOR_SIZE);
+	__read(ata, tmp, sector, 0, SECTOR_SIZE);
 	for (i = 0; i < bytes; i++) {
 		tmp[offset + i] = msg[i];
 	}
@@ -174,32 +174,41 @@ void identifyDevice(int ata) {
 	outb(ata + WIN_REG7, WIN_IDENTIFY);
 }
 
-void disk_identify() {
+disk_data disk_identify() {
 	identifyDevice(ATA0);
+
+	disk_data data;
 
 	unsigned short reg = 0;
 	int i;
 	/*Word 60 y 61 contienen el LBA total*/
 	short word60, word61;
+
 	printk("Identifying ATA0 device.\n\n");
 	for (i = 0; i < 255; i++) {
 		reg = getDataRegister(ATA0);
 		if (i == 0) {
-			printk("\tRemovable: %s\n", (reg & BIT(7)) ? "Yes" : "No");
-			printk("\tATA: %s\n", (reg & BIT(15)) ? "No" : "Yes");
-			printk("\tID: ");
+			data.removable = reg & BIT(7);
+			data.ata = !(reg & BIT(15));
 		} else if (i >= 27 && i <= 46) {
 			if (reg > 0) {
-				printk("%c%c", (reg & 0xFF00) >> 8, reg & 0xFF);
+				sprintk(data.id, "%c%c", (reg & 0xFF00) >> 8, reg & 0xFF);
 			}
 		} else if (i == 49) {
-			printk("\n");
-			printk("\tLBA: %s\n", (reg & BIT(9)) ? "Yes" : "No");
+			data.lba = reg & BIT(9);
 		} else if (i == 60) {
 			word60 = reg;
 		} else if (i == 61) {
 			word61 = reg;
 		}
 	}
-	printk("\tSize: %dMB\n", ((word61 << 14) + word60) / SECTOR_SIZE);
+	data.size = ((word61 << 14) + word60) / SECTOR_SIZE;
+
+	printk("\tRemovable: %s\n", data.removable? "Yes" : "No");
+	printk("\tATA: %s\n", data.ata? "No" : "Yes");
+	printk("\tID: %s\n", data.id);
+	printk("\tLBA: %s\n", data.lba? "Yes" : "No");
+	printk("\tSize: %dMB\n", data.size);
+
+	return data;
 }

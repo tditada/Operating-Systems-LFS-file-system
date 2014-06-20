@@ -39,13 +39,26 @@
 #define PART_TABLE     0x1C6	/* IBM partition table starts here in sect 0 */
 #define DEV_PER_DRIVE      5	/* hd0 + hd1 + hd2 + hd3 + hd4 = 5 */
 
-typedef struct disk_cmd {
+typedef struct {
 	int ata;
 	int sector;
 	int offset;
 	int bytes;
 	char * buffer;
 } disk_cmd;
+
+typedef struct {
+	bool removable;
+	bool ata;
+	char * id;
+	bool lba;
+	int size; //in MB
+} disk_data;
+
+typedef struct {
+	unsigned short sector;
+	int offset;
+} disk_addr;
 
 /* Escribe en el disco ata, los bytes indicados por parametro desde msg al sector "sector" con el offset "offset".
  * El offset comienza a partir del 0 y cada sector tiene 512 bytes. En caso que offset >= 512, se normaliza a 512 e incrementa el
@@ -75,6 +88,6 @@ unsigned short getErrorRegister(int ata);
 void ata_normalize(unsigned short* sector, int* offset);
 
 /*Muestra las caracteristicas del disco*/
-void disk_identify();
+disk_data disk_identify();
 
 #endif
