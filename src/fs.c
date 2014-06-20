@@ -152,7 +152,6 @@ int __get_fst_imap(char * filename, pinode inode) {
 		//peola
 	}else if(strcmp(filename,".")|| strcmp(filename, "..")){
 		//We have to search the CR with pwd or the one before the pwd
-		//TODO:string compare
 	}else{
 		//caso Tere/Downloads
 		//agregar el pwd
