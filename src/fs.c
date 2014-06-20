@@ -2,7 +2,7 @@
 
 #define __LOAD(type, addr) ((type *)__load(addr, sizeof(type)))
 
-
+bool __is_null(disk_addr addr);
 void __sync_log_buf();
 void __sync_cr(disk_addr address);
 void __write(void * data, int bytes, disk_addr address);
@@ -14,10 +14,12 @@ void * __load(disk_addr addr, int bytes);
 #define __load_ddata(addr) __LOAD(ddata, addr)
 #define __load_fdata(addr) __LOAD(fdata, addr)
 
+checkpoint __checkpoint_new(disk_addr lstart, disk_addr lend);
+
 static int __drive;
 
 // Hacemos el CR en RAM
-static checkpoint * __crp;
+static checkpoint * __cp;
 
 // reservar buffer en RAM
 static char __log_buf[BUFFER_SIZE];
@@ -33,17 +35,13 @@ int create(int drive, unsigned short sector, int offset){
 	// mkdir("/");
 	__drive = drive;
 
-	__crp = malloc(sizeof(checkpoint));
-	__crp->l_start = ;
-	__crp->l_end = ;
+	__cp = malloc(sizeof(checkpoint));
+	__cp->l_start = ;
+	__cp->l_end = ;
 }
 
 
-checkpoint __crp_new() {
-	pimap[MAX_IMAP] map;
-	disk_addr l_start;
-	disk_addr l_end;
-}
+
 
 int init() {
 	//aca cargas de disco el cr en cr 
@@ -156,7 +154,7 @@ int __get_fst_imap(char * filename, pinode inode) {
 		//caso Tere/Downloads
 		//agregar el pwd
 	}
-	cr_entry[MAX_IMAP] localmap =(crp->map);
+	cr_entry[MAX_IMAP] localmap =(cp->map);
 	for (i=0;i<=MAX_IMAP && localmap[i]!=NULL;i++){
 		cr_entry actualentry=localmap[i];
 		if(strcmp(actualentry,dir)){
@@ -185,15 +183,15 @@ void __sync_log_buf() {
 	int i, bytes;
 	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
 		bytes = min(__log_buf_size, SECTOR_SIZE);
-		__write(__log_buf+i*SECTOR_SIZE, bytes, __crp->l_end);
-		__crp->l_end.sector += bytes / SECTOR_SIZE;
-		__crp->l_end.offset = (__crp->l_end.offset + bytes) % SECTOR_SIZE;
+		__write(__log_buf+i*SECTOR_SIZE, bytes, __cp->l_end);
+		__cp->l_end.sector += bytes / SECTOR_SIZE;
+		__cp->l_end.offset = (__cp->l_end.offset + bytes) % SECTOR_SIZE;
 	}
 	__log_buf_size = 0;
 }
 
 void __sync_cr(disk_addr address) {
-	__write(*__crp, sizeof(checkpoint), address);
+	__write(*__cp, sizeof(checkpoint), address);
 }
 
 void __write(void * data, int bytes, disk_addr address) {
@@ -207,10 +205,22 @@ disk_addr __disk_addr_new(unsigned short sector, int offset) {
 	return addr;
 }
 
-//TODO: hacer defines tipo __load_inode que casteen
-//load <-- * para punteros a disco
+bool __is_null(disk_addr addr) {
+	return addr.sector == 0 && addr.offset == 0;
+}
+
 void * __load(disk_addr addr, int bytes) {
 	void * data;
 	ata_read(__drive, data, bytes, addr.sector, addr.offset);
 	return data;
 }
+
+checkpoint __checkpoint_new(disk_addr lstart, disk_addr lend) {
+	checkpoint c;
+	c.lstart.sector = lstart.sector;
+	c.lstart.offset = lstart.offset;
+	c.lend.sector = lend.sector;
+	c.lend.offset = lend.offset;
+	return c;
+}
+

@@ -6,14 +6,15 @@
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
-#define MAX_PATH 256
+#define MAX_PATH 1024
+#define MAX_FILENAME 64
 
 typedef struct {
 	char[DATA_BLOCK_SIZE] data;
 } fdata;
 
 typedef struct {
-	char * name;
+	char[MAX_FILENAME] name;
 	int inoden;
 } ddata_entry;
 
@@ -34,7 +35,7 @@ typedef struct {
 	int fsize;
 } inode;
 
-typedef inode * pinode;
+typedef disk_addr pinode;
 
 typedef struct {
 	int inoden;
@@ -45,10 +46,10 @@ typedef struct {
 	imap_entry[MAX_INODES] map;
 } imap;
 
-typedef imap * pimap;
+typedef disk_addr pimap;
 
 typedef struct {
-	char * dir_name;
+	char[MAX_FILENAME] dir_name;
 	int inoden;
 	pimap map;
 } cr_entry;
