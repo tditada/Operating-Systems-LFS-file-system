@@ -45,7 +45,12 @@ typedef struct {
 typedef inode * pinode;
 
 typedef struct {
-	pinode[MAX_INODES] map;
+	int inoden;
+	pinode * inode;
+}pinode_map_pair;
+
+typedef struct {
+	pinode_map_pair[MAX_INODES] map;
 	void * next;
 } imap;
 

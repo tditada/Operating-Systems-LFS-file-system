@@ -53,13 +53,30 @@ bool __is_inode_file(pinode myinode) {
 	} return false;
 }
 
+//Returns -1 if it doesn't exist
+//Gets the inode number searching in the directory data for a char * file
+int __get_inode_from_directory(pinode myinode, char * name){
+	if(!__is_inode_dir(myinode)){
+		return -1; 
+	}else{
+		dir_data_pair[MAX_INODES] dmap=((myinode->idata).ddata).mdata;
+		for(i=0; i<MAX_INODES && dmap[i]!=NULL;i++){
+			if(strcmp(dmap[i],name)){
+				return dmap[i].inoden;
+			}
+		}
+		return -1;
+	}
+}
+
+//aca se hace t	odo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
+// /home/pepe/sarasa/foo.txt te da el inode de foo.txt
 int __get_last_inode(char * filename) {
-	//aca se hace todo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
-	// /home/pepe/sarasa/foo.txt te da el inode de foo.txt
+	pimap myimap;
 	pinode myinode;
-	int i,fnsize;
+	int read,fnsize;
 	fnsize=strlen(filename);
-	i=__get_fst_inode(filename, myinode);
+	read=__get_fst_imap(filename, myimap);
 
 	//Cutting the filename - strcut with sprintf
 	char * newfilename=malloc((fnsize-i)+1);
@@ -68,20 +85,36 @@ int __get_last_inode(char * filename) {
 	if(newfilename[0]=="\0"){
 		//THE END!! File or directory
 	}
-
 	//Recorrer el resto de los bloques (por dentro!)
 	//Si no es el final, debe ser si o si una carpeta
 	char * dir;
-	__get_fst_dir(newfilename, dir);
-	__get_dir(myinode);
+	read=__get_fst_dir(newfilename, dir);
+	__get_inode_from_directory(myinode,dir);
 }
 
+//Having the inode number and the piece of the imap, searchs for the inode
+//If there is an error, it returns -1.
+int __get_inode_from_imap(pimap myimap, pinode myinode, int myinoden){
+	for(i=0;i<MAX_INODES;i++){
+		pimap[MAX_IMAP] actual = myimap->map[i];
+		if(actual==NULL){
+			return -1;	
+		}else{
+			if(actual.inoden==myinoden){
+				myinode=actual.inode;
+				return actual.inoden;
+			}
+		}
+	}
+	return -1;
+}
 
+//TODO: . y .. !!
 // Busca el primer inode desde el CR (sea file o sea directory. Arreglate vos)
 // La idea sería obtener el inode del primer directorio para ir mapeando desde ahí
-int __get_fst_inode(char * filename, pinode inode) {
+int __get_fst_imap(char * filename, pinode inode) {
 	char * dir;
-	int read, inoden;
+	int read;
 
 	read = __get_fst_dir(filename, &dir);
 	if(strcmp(filename, "/")){
@@ -93,16 +126,14 @@ int __get_fst_inode(char * filename, pinode inode) {
 		//caso Tere/Downloads
 		//agregar el pwd
 	}
-	inode = crp->map[inoden]->map[inoden];
+	pimap = crp->map[dir];
 	//Arreglar bajada a disco
 
 	return read;
 }
 
-// TODO: . and .. !! 
-
 // Gets the first director copying everything before /
-//Returns number of chars read
+// Returns number of chars read
 int __get_fst_dir(char * filename, char * dir) {
 	int i=1;
 	while (filename[i-1] != '\0' && filename[i-1] != '/') {
