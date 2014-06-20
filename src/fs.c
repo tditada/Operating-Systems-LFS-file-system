@@ -2,7 +2,7 @@
 
 #define __LOAD(type, addr) ((type *)__load(addr, sizeof(type)))
 
-
+bool __is_null(disk_addr addr);
 void __sync_log_buf();
 void __sync_cr(disk_addr address);
 void __write(void * data, int bytes, disk_addr address);
@@ -206,6 +206,10 @@ disk_addr __disk_addr_new(unsigned short sector, int offset) {
 	return addr;
 }
 
+bool __is_null(disk_addr addr) {
+	return addr.sector == 0 && addr.offset == 0;
+}
+
 void * __load(disk_addr addr, int bytes) {
 	void * data;
 	ata_read(__drive, data, bytes, addr.sector, addr.offset);
@@ -220,3 +224,4 @@ checkpoint __checkpoint_new(disk_addr lstart, disk_addr lend) {
 	c.lend.offset = lend.offset;
 	return c;
 }
+

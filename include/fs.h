@@ -14,7 +14,7 @@ typedef struct {
 } fdata;
 
 typedef struct {
-	char * name;
+	char[MAX_FILENAME] name;
 	int inoden;
 } ddata_entry;
 
@@ -49,7 +49,7 @@ typedef struct {
 typedef disk_addr pimap;
 
 typedef struct {
-	char * dir_name;
+	char[MAX_FILENAME] dir_name;
 	int inoden;
 	pimap map;
 } cr_entry;
