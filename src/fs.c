@@ -1,8 +1,10 @@
 #include "fs.h"
 
-void __sync__log_buf();
+void __sync_log_buf();
 void __sync_cr(disk_addr address);
 void __write(void * data, int bytes, disk_addr address);
+void * __load(disk_addr addr, int bytes);
+disk_addr __disk_addr_new(unsigned short sector, int offset);
 
 static int __drive;
 
@@ -19,7 +21,7 @@ static char __path_buffer[MAX_PATH];
 /*TODO: static char * pwd;*/
 
 
-int create(int drive, int offset){
+int create(int drive, unsigned short sector, int offset){
 	// mkdir de /
 	// mkdir("/");
 	__drive = drive;
@@ -29,6 +31,7 @@ int create(int drive, int offset){
 	__crp->lend = ;
 }
 
+/*
 checkpoint __crp_new() {
 	pimap[MAX_IMAP] map;
 	disk_addr lstart;
@@ -167,9 +170,9 @@ int __get_fst_dir(char * filename, char * dir) {
 	sprintf(dir, "%.*s", i, filename);
 
 	return i;
-}
+}*/
 
-void __sync__log_buf() {
+void __sync_log_buf() {
 	int i, bytes;
 	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
 		bytes = min(__log_buf_size, SECTOR_SIZE);
@@ -186,4 +189,19 @@ void __sync_cr(disk_addr address) {
 
 void __write(void * data, int bytes, disk_addr address) {
 	ata_write(__drive, data, bytes, address.sector, address.offset);
+}
+
+disk_addr __disk_addr_new(unsigned short sector, int offset) {
+	disk_addr addr;
+	addr.sector = sector;
+	addr.offset = offset;
+	return addr;
+}
+
+//TODO: hacer defines tipo __load_inode que casteen
+//load <-- * para punteros a disco
+void * __load(disk_addr addr, int bytes) {
+	void * data;
+	ata_read(__drive, data, bytes, addr.sector, addr.offset);
+	return data;
 }

@@ -63,6 +63,11 @@ typedef struct {
 	disk_addr lend;
 } checkpoint;
 
+typedef struct {
+	unsigned short sector;
+	int offset;
+} disk_addr;
+
 // Hacemos el CR en RAM
 // reservar buffer en RAM
 // mkdir de /
