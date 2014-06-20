@@ -18,7 +18,6 @@ static char __path_buffer[MAX_PATH];
 
 /*TODO: static char * pwd;*/
 
-
 int create(int drive, int offset){
 	// mkdir de /
 	// mkdir("/");
@@ -143,12 +142,13 @@ int __get_fst_imap(char * filename, pinode inode) {
 		//peola
 	}else if(strcmp(filename,".")|| strcmp(filename, "..")){
 		//We have to search the CR with pwd or the one before the pwd
-		//TODO:strig compare
+		//TODO:string compare
 	}else{
 		//caso Tere/Downloads
 		//agregar el pwd
 	}
-	pimap = crp->map[dir];
+
+	pimap = crp->map;
 	//Arreglar bajada a disco
 
 

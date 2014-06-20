@@ -45,20 +45,25 @@ typedef struct {
 typedef inode * pinode;
 
 typedef struct {
-	char * dir;
 	int inoden;
 	pinode * inode;
-} pinode_map_pair;
+} imap_pair;
 
 typedef struct {
-	pinode_map_pair[MAX_INODES] map;
+	imap_pair[MAX_INODES] map;
 	void * next;
 } imap;
 
 typedef imap * pimap;
 
 typedef struct {
-	pimap[MAX_IMAP] map;
+	char * dir_name;
+	int inoden;
+	pimap myimap;
+}cr_map_tuple;
+
+typedef struct {
+	cr_map_tuple[MAX_IMAP] map;
 	disk_addr lstart;
 	disk_addr lend;
 } checkpoint;
