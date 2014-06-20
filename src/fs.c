@@ -1,17 +1,38 @@
 #include "fs.h"
 
+void __sync__log_buf();
+void __sync_cr(disk_addr address);
+void __write(void * data, int bytes, disk_addr address);
+
+static int __drive;
+
 // Hacemos el CR en RAM
-static checkpoint * crp;
+static checkpoint * __crp;
+
 // reservar buffer en RAM
-static char log_buffer[MAX_BUFFER_SIZE];
+static char __log_buf[BUFFER_SIZE];
+static int __log_buf_size = 0;
 
-static char path_buffer[MAX_PATH];
+static char __path_buffer[MAX_PATH];
 
-static char * pwd;
 
-int create(){
-	mkdir("/");
+/*TODO: static char * pwd;*/
+
+
+int create(int drive, int offset){
 	// mkdir de /
+	// mkdir("/");
+	__drive = drive;
+
+	__crp = malloc(sizeof(checkpoint));
+	__crp->lstart = ;
+	__crp->lend = ;
+}
+
+checkpoint __crp_new() {
+	pimap[MAX_IMAP] map;
+	disk_addr lstart;
+	disk_addr lend;
 }
 
 int init() {
@@ -26,7 +47,7 @@ int mkdir(char * filename){
 
 }
 
-//TODO: como escribir en el log_buffer (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
+//TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
 //TODO: sync: baja a disco
 
 int touch() {
@@ -52,6 +73,7 @@ bool __is_inode_file(pinode myinode) {
 		return true; 
 	} return false;
 }
+
 
 //Returns -1 if it doesn't exist
 //Gets the inode number searching in the directory data for a char * file
@@ -129,6 +151,7 @@ int __get_fst_imap(char * filename, pinode inode) {
 	pimap = crp->map[dir];
 	//Arreglar bajada a disco
 
+
 	return read;
 }
 
@@ -144,4 +167,23 @@ int __get_fst_dir(char * filename, char * dir) {
 	sprintf(dir, "%.*s", i, filename);
 
 	return i;
+}
+
+void __sync__log_buf() {
+	int i, bytes;
+	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
+		bytes = min(__log_buf_size, SECTOR_SIZE);
+		__write(__log_buf+i*SECTOR_SIZE, bytes, __crp->lend);
+		__crp->lend.sector += bytes / SECTOR_SIZE;
+		__crp->lend.offset = (__crp->lend.offset + bytes) % SECTOR_SIZE;
+	}
+	__log_buf_size = 0;
+}
+
+void __sync_cr(disk_addr address) {
+	__write(*__crp, sizeof(checkpoint), address);
+}
+
+void __write(void * data, int bytes, disk_addr address) {
+	ata_write(__drive, data, bytes, address.sector, address.offset);
 }

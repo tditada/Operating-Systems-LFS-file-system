@@ -48,7 +48,7 @@ typedef struct {
 	char * dir;
 	int inoden;
 	pinode * inode;
-}pinode_map_pair;
+} pinode_map_pair;
 
 typedef struct {
 	pinode_map_pair[MAX_INODES] map;
