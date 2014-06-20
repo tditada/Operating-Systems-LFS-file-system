@@ -41,39 +41,70 @@ int remove() {
 	// borra archivo o directorio (con todo lo que tenga adentro)
 }
 
-int __get_dir() {
-	// llama a get last inode y castea a carpeta. Handlea errores
+bool __is_inode_dir(pinode myinode) {
+	if((*pinode).type)==FS_DIR){
+		return true; 
+	} return false;
 }
 
-int __get_file() {
-	// llama a get last inode y castea a file. Handlea errores
+bool __is_inode_file(pinode myinode) {
+	if((*pinode).type)==FS_FILE){
+		return true; 
+	} return false;
 }
 
-int __get_last_inode() {
+int __get_last_inode(char * filename) {
 	//aca se hace todo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
 	// /home/pepe/sarasa/foo.txt te da el inode de foo.txt
+	pinode myinode;
+	int i,fnsize;
+	fnsize=strlen(filename);
+	i=__get_fst_inode(filename, myinode);
+
+	//Cutting the filename - strcut with sprintf
+	char * newfilename=malloc((fnsize-i)+1);
+	sprintf(newfilename, "%.*s", fnsize-i, filename[i]);
+
+	if(newfilename[0]=="\0"){
+		//THE END!! File or directory
+	}
+
+	//Recorrer el resto de los bloques (por dentro!)
+	//Si no es el final, debe ser si o si una carpeta
+	char * dir;
+	__get_fst_dir(newfilename, dir);
+	__get_dir(myinode);
 }
 
-// la idea aca es que te da el inode (sea lo que sea que vos querias, sea file o sea directory. Arreglate vos)
-int __get_next_inode(char * filename, pinode * inode) {
+
+// Busca el primer inode desde el CR (sea file o sea directory. Arreglate vos)
+// La idea sería obtener el inode del primer directorio para ir mapeando desde ahí
+int __get_fst_inode(char * filename, pinode inode) {
 	char * dir;
 	int read, inoden;
 
-	read = __get_fst_dir(&dir);
+	read = __get_fst_dir(filename, &dir);
+	if(strcmp(filename, "/")){
+		//peola
+	}else if(strcmp(filename,".")|| strcmp(filename, "..")){
+		//We have to search the CR with pwd or the one before the pwd
+		//TODO:strig compare
+	}else{
+		//caso Tere/Downloads
+		//agregar el pwd
+	}
 	inode = crp->map[inoden]->map[inoden];
+	//Arreglar bajada a disco
+
+	return read;
 }
 
 // TODO: . and .. !! 
 
-/*
-usage:
-	char * dir;
-
-	filename += __get_fst_dir(&dir);
-*/
-int __get_fst_dir(char * filename) {
-	int i = 1;
-
+// Gets the first director copying everything before /
+//Returns number of chars read
+int __get_fst_dir(char * filename, char * dir) {
+	int i=1;
 	while (filename[i-1] != '\0' && filename[i-1] != '/') {
 		i++;
 	}

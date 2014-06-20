@@ -1,5 +1,6 @@
 #ifndef FS_H
 #define FS_H
+#include "kernel.h"
 
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
@@ -16,10 +17,10 @@ typedef struct {
 typedef struct {
 	char * name;
 	int inoden;
-} child_data;
+} dir_data_pair;
 
 typedef struct {
-	child_data * children;
+	dir_data_pair[MAX_INODES] mdata;
 	int inum;
 	int offset;
 	void * next; //next block on the log
@@ -27,7 +28,12 @@ typedef struct {
 
 typedef enum {
 	FS_FILE, FS_DIR
-} ftype
+} ftype;
+
+typedef struct{
+	dir_data * ddata;
+	file_data * fdata;
+} idata;
 
 typedef struct {
 	int num;
