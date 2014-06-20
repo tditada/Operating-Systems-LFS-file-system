@@ -55,11 +55,6 @@ typedef struct {
 	int size; //in MB
 } disk_data;
 
-typedef struct {
-	unsigned short sector;
-	int offset;
-} disk_addr;
-
 /* Escribe en el disco ata, los bytes indicados por parametro desde msg al sector "sector" con el offset "offset".
  * El offset comienza a partir del 0 y cada sector tiene 512 bytes. En caso que offset >= 512, se normaliza a 512 e incrementa el
  * sector (offset / 512) veces.

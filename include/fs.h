@@ -31,8 +31,7 @@ typedef enum {
 } ftype;
 
 typedef struct{
-	dir_data * ddata;
-	file_data * fdata;
+	void * data;
 } idata;
 
 typedef struct {
