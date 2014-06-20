@@ -60,10 +60,10 @@ typedef struct {
 	char * dir_name;
 	int inoden;
 	pimap myimap;
-}cr_map_tuple;
+}cr_entry;
 
 typedef struct {
-	cr_map_tuple[MAX_IMAP] map;
+	cr_entry[MAX_IMAP] map;
 	disk_addr lstart;
 	disk_addr lend;
 } checkpoint;

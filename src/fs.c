@@ -73,14 +73,13 @@ bool __is_inode_file(pinode myinode) {
 	} return false;
 }
 
-
 //Returns -1 if it doesn't exist
 //Gets the inode number searching in the directory data for a char * file
 int __get_inode_from_directory(pinode myinode, char * name){
 	if(!__is_inode_dir(myinode)){
 		return -1; 
 	}else{
-		dir_data_pair[MAX_INODES] dmap=((myinode->idata).ddata).mdata;
+		dir_data_pair[MAX_INODES] dmap =((myinode->idata).ddata).mdata;
 		for(i=0; i<MAX_INODES && dmap[i]!=NULL;i++){
 			if(strcmp(dmap[i],name)){
 				return dmap[i].inoden;
@@ -147,11 +146,14 @@ int __get_fst_imap(char * filename, pinode inode) {
 		//caso Tere/Downloads
 		//agregar el pwd
 	}
-
-	pimap = crp->map;
+	cr_entry[MAX_IMAP] localmap =(crp->map);
+	for (i=0;i<=MAX_IMAP && localmap[i]!=NULL;i++){
+		cr_entry actualentry=localmap[i];
+		if(strcmp(actualentry,dir)){
+			pimap = localmap.myimap;
+		}
+	}
 	//Arreglar bajada a disco
-
-
 	return read;
 }
 
