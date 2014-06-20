@@ -27,10 +27,12 @@ typedef enum {
 	FS_FILE, FS_DIR
 } ftype;
 
+typedef disk_addr pidata;
+
 typedef struct {
 	int num;
 	ftype type;
-	char[MAX_IDATA] idata;
+	pidata[MAX_IDATA] idata;
 	int fsize;
 } inode;
 

@@ -11,8 +11,8 @@ disk_addr __disk_addr_new(unsigned short sector, int offset);
 void * __load(disk_addr addr, int bytes);
 #define __load_imap(addr) __LOAD(imap, addr)
 #define __load_inode(addr) __LOAD(inode, addr)
-#define __load_inode(addr) __LOAD(inode, addr)
-
+#define __load_ddata(addr) __LOAD(ddata, addr)
+#define __load_fdata(addr) __LOAD(fdata, addr)
 
 static int __drive;
 
