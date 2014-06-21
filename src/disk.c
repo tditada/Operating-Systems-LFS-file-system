@@ -2,14 +2,14 @@
 
 #define BIT(i) (1 << (i))
 
-void sendComm(int ata, int rdwr, unsigned short sector);
-void __read(int ata, char * ans, unsigned short sector, int offset, int count);
-void __write(int ata, char * msg, int bytes, unsigned short sector, int offset);
+static void sendComm(int ata, int rdwr, unsigned short sector);
+static void __read(int ata, char * ans, unsigned short sector, int offset, int count);
+static void __write(int ata, char * msg, int bytes, unsigned short sector, int offset);
 
-unsigned short getDataRegister(int ata);
-void writeDataToRegister(int ata, char upper, char lower);
+static unsigned short getDataRegister(int ata);
+static void writeDataToRegister(int ata, char upper, char lower);
 
-void translateBytes(char ans[], unsigned short sector);
+static void translateBytes(char ans[], unsigned short sector);
 
 void ata_normalize(unsigned short* sector, int* offset) {
 	if (*offset >= SECTOR_SIZE) {
@@ -192,7 +192,7 @@ disk_data disk_identify() {
 			data.ata = !(reg & BIT(15));
 		} else if (i >= 27 && i <= 46) {
 			if (reg > 0) {
-				sprintk(data.id, "%c%c", (reg & 0xFF00) >> 8, reg & 0xFF);
+				sprintf(data.id, "%c%c", (reg & 0xFF00) >> 8, reg & 0xFF);
 			}
 		} else if (i == 49) {
 			data.lba = reg & BIT(9);

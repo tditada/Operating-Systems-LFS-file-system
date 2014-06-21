@@ -1,6 +1,7 @@
 #include "kernel.h"
 #include "apps.h"
 #include "disk.h"
+#include "fs.h"
 
 #define BUFSIZE 200
 #define NARGS 20
@@ -23,7 +24,7 @@ cmdtab[] =
 	{	"camino_ns",	camino_ns_main },
 	{	"prodcons",		prodcons_main },
 	{	"divz",			divz_main },
-	{ }
+	{	"testfs",		testfs }
 };
 
 int

@@ -1,8 +1,11 @@
 #ifndef FS_H
 #define FS_H
+
 #include "kernel.h"
+#include "disk.h"
 
 #define DATA_BLOCK_SIZE 128
+#define MAX_IDATA 8
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
@@ -10,16 +13,21 @@
 #define MAX_FILENAME 64
 
 typedef struct {
-	char[DATA_BLOCK_SIZE] data;
+	unsigned short sector;
+	int offset;
+} disk_addr;
+
+typedef struct {
+	char data[DATA_BLOCK_SIZE];
 } fdata;
 
 typedef struct {
-	char[MAX_FILENAME] name;
+	char name[MAX_FILENAME];
 	int inoden;
 } ddata_entry;
 
 typedef struct {
-	ddata_entry[MAX_INODES] map;
+	ddata_entry map[MAX_INODES];
 } ddata;
 
 typedef enum {
@@ -31,7 +39,7 @@ typedef disk_addr pidata;
 typedef struct {
 	int num;
 	ftype type;
-	pidata[MAX_IDATA] idata;
+	pidata idata[MAX_IDATA];
 	int fsize;
 } inode;
 
@@ -43,43 +51,40 @@ typedef struct {
 } imap_entry;
 
 typedef struct {
-	imap_entry[MAX_INODES] map;
+	imap_entry map[MAX_INODES];
 } imap;
 
 typedef disk_addr pimap;
 
 typedef struct {
-	char[MAX_FILENAME] dir_name;
+	char dir_name[MAX_FILENAME];
 	int inoden;
 	pimap map;
 } cr_entry;
 
 typedef struct {
-	cr_entry[MAX_IMAP] map;
+	cr_entry map[MAX_IMAP];
 	disk_addr lstart;
 	disk_addr lend;
 } checkpoint;
 
-typedef struct {
+typedef enum {
 	FS_IMAP, FS_INODE
 } ntype;
 
 typedef struct {
 	ntype type;
-	ddata_addr next;
+	disk_addr next;
 	char data[0];
 } lnode;
-
-typedef struct {
-	unsigned short sector;
-	int offset;
-} disk_addr;
 
 // Hacemos el CR en RAM
 // reservar buffer en RAM
 // mkdir de /
-int fs_init();
+void init();
+void create(int drive, int size);
+int testfs();
 
-int fs_mkdir(char * path);
+/*int fs_mkdir(char * path);*/
 
 #endif
