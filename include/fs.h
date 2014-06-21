@@ -11,7 +11,10 @@
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
-#define MAX_LNODE_SIZE max(sizeof(inode), sizeof(imap)) // TODO: check if these cases are all!!
+#define MAX_LNODE_SIZE max(sizeof(inode), 
+						max(sizeof(imap),
+						 max(sizeof(ddata),
+						 	sizeof(fdata)))) // TODO: check if these cases are all!!
 
 typedef struct {
 	unsigned short sector;
@@ -70,7 +73,7 @@ typedef struct {
 } checkpoint;
 
 typedef enum {
-	FS_IMAP, FS_INODE
+	FS_IMAP, FS_INODE, FS_DDATA, FS_FDATA
 } ntype;
 
 typedef struct {

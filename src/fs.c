@@ -272,6 +272,12 @@ lnode * __load_lnode(disk_addr addr) {
 	case FS_INODE:
 		actual_size = sizeof(inode);
 		break;
+	case FS_DDATA:
+		actual_size = sizeof(ddata);
+		break;
+	case FS_FDATA:
+		actual_size = sizeof(fdata);
+		break;
 	//TODO: check for more cases!
 	}
 	free(data + actual_size, MAX_LNODE_SIZE - actual_size);
