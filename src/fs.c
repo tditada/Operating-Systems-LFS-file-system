@@ -35,7 +35,7 @@ static int __log_buf_size = 0;
 
 int testfs() {
 	printk("Hola mundo!\n");
-	create(ATA0, 536870912);
+	create(ATA0, 1<<15);
 
 	printk("Syncing CR...\n");
 	__sync_cr(__disk_addr_new(0, 0)); //TODO:remove!
