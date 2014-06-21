@@ -11,6 +11,7 @@
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
+#define MAX_LNODE_SIZE max(sizeof(inode), sizeof(imap)) // TODO: check if these cases are all!!
 
 typedef struct {
 	unsigned short sector;
@@ -73,7 +74,7 @@ typedef enum {
 } ntype;
 
 typedef struct {
-	ntype type;
+	ntype type; // /!\ MUST BE FIRST!
 	disk_addr next;
 	char data[0];
 } lnode;

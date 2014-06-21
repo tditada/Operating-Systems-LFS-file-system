@@ -7,11 +7,15 @@ static void __write(void * data, int bytes, disk_addr address);
 //loads
 #define __LOAD(type, addr) ((type *)__load(addr, sizeof(type)))
 static void * __load(disk_addr addr, int bytes);
+static lnode * __load_lnode(disk_addr addr);
 #define __load_checkpoint(addr) __LOAD(checkpoint, addr)
 #define __load_imap(addr) __LOAD(imap, addr)
 #define __load_inode(addr) __LOAD(inode, addr)
 #define __load_ddata(addr) __LOAD(ddata, addr)
 #define __load_fdata(addr) __LOAD(fdata, addr)
+//iteration
+static lnode * __next_lnode_buf(int * i);
+static lnode * __next_lnode(lnode * curr);
 //constructors
 static disk_addr __disk_addr_new(unsigned short sector, int offset);
 static checkpoint * __checkpoint_new(disk_addr lstart, disk_addr lend);
@@ -28,6 +32,7 @@ static checkpoint * __cp;
 
 static char __log_buf[BUFFER_SIZE];
 static int __log_buf_size = 0;
+static (lnode *) __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
 
 /*static char __path_buffer[MAX_PATH];*/
 
@@ -70,14 +75,17 @@ void init() {
 	printk("...Done\n");
 }
 
-/*int mkdir(char * filename){
-	// aca hago un lookup, primero en el buffer
-	int i;
-	char * s;
+/*int __mkdir(char * filename) {
 	
+}*/
 
-}
+/*int mkdir(char * filename){
+	// TODO: aca hago un lookup, primero en el buffer
 
+
+}*/
+
+/*
 //TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
 //TODO: sync: baja a disco
 
@@ -203,6 +211,18 @@ int __get_fst_dir(char * filename, char * dir) {
 	return i;
 }*/
 
+lnode * __next_lnode_buf(int * i) {
+	if (*i >= __log_buf_size) {
+		return NULL;
+	}
+	*i=(*i)++;
+	return __log_buf_list_i[*i];
+}
+
+lnode * __next_lnode(lnode * curr) {
+	return __load_lnode(curr->next);
+}
+
 void __sync_log_buf() {
 	int i, bytes;
 	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
@@ -210,6 +230,9 @@ void __sync_log_buf() {
 		__write(__log_buf+i*SECTOR_SIZE, bytes, __cp->lend);
 		__cp->lend.sector += bytes / SECTOR_SIZE;
 		__cp->lend.offset = (__cp->lend.offset + bytes) % SECTOR_SIZE;
+	}
+	for (i=0; i<__log_buf_size; i++) {
+		__log_buf_list[i] = NULL;
 	}
 	__log_buf_size = 0;
 }
@@ -237,6 +260,23 @@ void * __load(disk_addr addr, int bytes) {
 	void * data = malloc(bytes);
 	ata_read(__drive, data, bytes, addr.sector, addr.offset);
 	return data;
+}
+
+lnode * __load_lnode(disk_addr addr) {
+	void * data = load(addr, MAX_LNODE_SIZE);
+	int actual_size;
+	switch(((int *)data)[0]) {
+	case FS_IMAP:
+		actual_size = sizeof(imap);
+		break;
+	case FS_INODE:
+		actual_size = sizeof(inode);
+		break;
+	//TODO: check for more cases!
+	}
+	free(data + actual_size, MAX_LNODE_SIZE - actual_size);
+	//or else you'll read garbage
+	return (lnode) data;
 }
 
 checkpoint * __checkpoint_new(disk_addr lstart, disk_addr lend) {
