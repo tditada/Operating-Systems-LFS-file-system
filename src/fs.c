@@ -1,5 +1,7 @@
 #include "fs.h"
 
+//TODO TERE: Testing LFS structure, FREES.
+
 #define __LOAD(type, addr) ((type *)__load(addr, sizeof(type)))
 
 bool __is_null(disk_addr addr);
@@ -40,14 +42,11 @@ int create(int drive, unsigned short sector, int offset){
 	__cp->l_end = ;
 }
 
-
-
-
 int init() {
 	//aca cargas de disco el cr en cr 
 }
 
-int mkdir(char * filename){
+int mkdir(char * filename){ //JP
 	// aca hago un lookup, primero en el buffer
 	int i;
 	char * s;
@@ -58,16 +57,28 @@ int mkdir(char * filename){
 //TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
 //TODO: sync: baja a disco
 
-int touch() {
+int touch() { //JP
 	// mismo que mkdir pero para archivos
 }
 
 int append() {
-	// escribe al final del archivo
+	//Agarro el inodo
+	pinode mypinode=__load_inode(__get_last_inode());
+	if(strlen((mypinode->idata)[i])) //?? Revisar punteros
 }
 
-int remove() {
-	// borra archivo o directorio (con todo lo que tenga adentro)
+// borra archivo o directorio (con todo lo que tenga adentro)
+int remove(char * dir) {
+	for(i=0;i<=MAX_IMAP;i++){
+		cr_entry actualentry=(crp->map[i]);
+		if(strcmp(actualentry.dir_name, dir)){
+			pimap mypimap = __load_imap(actualentry.map)
+			mypimap->sector=0;
+			mypimap->offset=0;
+			return 1;
+		}		
+	}
+	return -1;
 }
 
 bool __is_inode_dir(pinode myinode) {
@@ -82,7 +93,7 @@ bool __is_inode_file(pinode myinode) {
 	} return false;
 }
 
-//Returns -1 if it doesn't exist
+/*//Returns -1 if it doesn't exist
 //Gets the inode number searching in the directory data for a char * file
 int __get_inode_from_directory(pinode myinode, char * name){
 	if(!__is_inode_dir(myinode)){
@@ -96,41 +107,58 @@ int __get_inode_from_directory(pinode myinode, char * name){
 		}
 		return -1;
 	}
+}*/
+
+int __get_last_inode(char * filename, pinode last, void * mypidata) {
+	pimap mypimap;
+	pinode mypinode;
+	ftype mytype;
+	int read,fnsize,myinoden;
+	char * dir;
+
+	while(filename[0]!='\0'){
+		fnsize=strlen(filename);
+		read=__get_cr_imap_n_inoden(filename, mypimap,myinoden);
+		
+		//Cutting the filename - strcut with sprintf
+		char * newfilename=malloc((fnsize-i)+1);
+		sprintf(newfilename, "%.*s", fnsize-i, filename[i]);
+		filename=newfilename;
+
+		read=__get_fst_dir(filename, dir);
+		__get_inode_from_imap(mypimap,mypinode,myinoden);
+
+		__get_data_from_inode(mypinode,mytype,mypidata); //devuelvo idata y type
+		
+		if (mytype==FS_DIR){
+			mypidata = (ddata)mypidata;
+		}else if(mytype==FS_FILE){
+			mypidata=(fdata)mypidata;
+			last=mypinode;
+			return 0;
+		}
+	}
+	return -1;
 }
 
-//aca se hace todo el "" hasta consumir todo el camino y llegar al inode que vos querias: 
-// /home/pepe/sarasa/foo.txt te da el inode de foo.txt
-int __get_last_inode(char * filename) {
-	pimap myimap;
-	pinode myinode;
-	int read,fnsize;
-	fnsize=strlen(filename);
-	read=__get_fst_imap(filename, myimap);
-
-	//Cutting the filename - strcut with sprintf
-	char * newfilename=malloc((fnsize-i)+1);
-	sprintf(newfilename, "%.*s", fnsize-i, filename[i]);
-
-	if(newfilename[0]=="\0"){
-		//THE END!! File or directory
-	}
-	//Recorrer el resto de los bloques (por dentro!)
-	//Si no es el final, debe ser si o si una carpeta
-	char * dir;
-	read=__get_fst_dir(newfilename, dir);
-	__get_inode_from_directory(myinode,dir);
+int __get_data_from_inode(pinode mypinode, ftype mytype, void * mypidata){
+	actualinode = __load_inode(mypinode);
+	mytype = actualinode.type;
+	mypidata = actualinode.idata;
+	return 0;
 }
 
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
-int __get_inode_from_imap(pimap myimap, pinode myinode, int myinoden){
+int __get_inode_from_imap(pimap mypimap, pinode mypinode, int myinoden){
 	for(i=0;i<MAX_INODES;i++){
-		pimap[MAX_IMAP] actual = myimap->map[i];
+		imap_entry actual = (__load_imap(mypimap)->map)[i];
 		if(actual==NULL){
 			return -1;	
 		}else{
 			if(actual.inoden==myinoden){
-				myinode=actual.inode;
+				//No sube el inode a disco porque todavía no lo uso
+				mypinode=actual.inode; 
 				return actual.inoden;
 			}
 		}
@@ -139,9 +167,9 @@ int __get_inode_from_imap(pimap myimap, pinode myinode, int myinoden){
 }
 
 //TODO: . y .. !!
-// Busca el primer inode desde el CR (sea file o sea directory. Arreglate vos)
-// La idea sería obtener el inode del primer directorio para ir mapeando desde ahí
-int __get_fst_imap(char * filename, pinode inode) {
+// Busca el primer imap desde el CR (sea file o sea directory. Arreglate vos)
+// La idea sería obtener el imap del primer directorio para ir mapeando desde ahí
+int __get_cr_imap_n_inoden(char * filename, pimap mypimap, int myinoden) {
 	char * dir;
 	int read;
 
@@ -155,13 +183,13 @@ int __get_fst_imap(char * filename, pinode inode) {
 		//agregar el pwd
 	}
 	cr_entry[MAX_IMAP] localmap =(cp->map);
-	for (i=0;i<=MAX_IMAP && localmap[i]!=NULL;i++){
+	for (i=0;i<=MAX_IMAP && !__is_null(localmap[i].map);i++){
 		cr_entry actualentry=localmap[i];
-		if(strcmp(actualentry,dir)){
-			pimap = localmap.myimap;
+		if(strcmp(actualentry.dir_name,dir)){
+			mypimap = actualentry.map;
+			myinoden=actualentry.inoden;
 		}
 	}
-	//Arreglar bajada a disco
 	return read;
 }
 
@@ -223,4 +251,3 @@ checkpoint __checkpoint_new(disk_addr lstart, disk_addr lend) {
 	c.lend.offset = lend.offset;
 	return c;
 }
-
