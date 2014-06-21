@@ -1,41 +1,53 @@
 #ifndef FS_H
 #define FS_H
+
 #include "kernel.h"
+#include "disk.h"
 
 #define DATA_BLOCK_SIZE 128
+#define MAX_IDATA 8
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
 #define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
+#define MAX_LNODE_SIZE max(sizeof(inode), 
+						max(sizeof(imap),
+						 max(sizeof(ddata),
+						 	sizeof(fdata)))) // TODO: check if these cases are all!!
 
 typedef struct {
-	char[DATA_BLOCK_SIZE] data;
+	unsigned short sector;
+	int offset;
+} dptr;
+
+typedef struct {
+	char data[DATA_BLOCK_SIZE];
 } fdata;
 
 typedef struct {
-	char[MAX_FILENAME] name;
+	char name[MAX_FILENAME];
 	int inoden;
 } ddata_entry;
 
 typedef struct {
-	ddata_entry[MAX_INODES] map;
+	ddata_entry map[MAX_INODES];
 } ddata;
 
 typedef enum {
 	FS_FILE, FS_DIR
 } ftype;
 
-typedef disk_addr didata;
+typedef dptr didata;
 
 typedef struct {
 	int num;
 	ftype type;
-	didata[MAX_IDATA] idata;
+	didata idata[MAX_IDATA];
 	int fsize;
 } inode;
 
-typedef disk_addr dinode;
+typedef dptr dinode;
 
 typedef struct {
 	int inoden;
@@ -43,43 +55,40 @@ typedef struct {
 } imap_entry;
 
 typedef struct {
-	imap_entry[MAX_INODES] map;
+	imap_entry map[MAX_INODES];
 } imap;
 
-typedef disk_addr dimap;
+typedef dptr dimap;
 
 typedef struct {
-	char[MAX_FILENAME] dir_name;
+	char dir_name[MAX_FILENAME];
 	int inoden;
 	dimap map;
 } cr_entry;
 
 typedef struct {
-	cr_entry[MAX_IMAP] map;
-	disk_addr lstart;
-	disk_addr lend;
+	cr_entry map[MAX_IMAP];
+	dptr lstart;
+	dptr lend;
 } checkpoint;
 
-typedef struct {
-	FS_IMAP, FS_INODE
+typedef enum {
+	FS_IMAP, FS_INODE, FS_DDATA, FS_FDATA
 } ntype;
 
 typedef struct {
-	ntype type;
-	ddata_addr next;
+	ntype type; // /!\ MUST BE FIRST!
+	dptr next;
 	char data[0];
 } lnode;
-
-typedef struct {
-	unsigned short sector;
-	int offset;
-} disk_addr;
 
 // Hacemos el CR en RAM
 // reservar buffer en RAM
 // mkdir de /
-int fs_init();
+void init();
+void create(int drive, int size);
+int testfs();
 
-int fs_mkdir(char * path);
+/*int fs_mkdir(char * path);*/
 
 #endif
