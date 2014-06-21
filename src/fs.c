@@ -63,39 +63,63 @@ int touch() { //JP
 
 int append() {
 	//Agarro el inodo
-	pinode mypinode=__load_inode(__get_last_inode());
-	if(strlen((mypinode->idata)[i])) //?? Revisar punteros
+	dinode mydinode=__load_inode(__get_last_inode());
+	if(strlen((mydinode->idata)[i])) //?? Revisar punteros
 }
 
 // borra archivo o directorio (con todo lo que tenga adentro)
 int remove(char * dir) {
-	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actualentry=(crp->map[i]);
+	// Cambia de acuerdo a si es un archivo o un directorio cambia el comportamiento
+	int n,flag=0,count=0;
+	imap_entry myimapentry;
+	cr_entry * map=(crp->map);
+	inode * pinode;
+	// Borra el puntero al inodo del imapa.. 
+	for(i=0;i<=MAX_IMAP;i++){ //RECORRO EL CR
+		cr_entry actualentry=map[i];
 		if(strcmp(actualentry.dir_name, dir)){
-			pimap mypimap = __load_imap(actualentry.map)
-			mypimap->sector=0;
-			mypimap->offset=0;
-			return 1;
+			n=actualentry.inoden;
+			imap * mypimap = __load_imap(actualentry.map)
+			for(j=0; j<=MAX_INODES j++){ //RECORRO EL IMAP
+				myimapentry = (myimap->map)[j];
+				dinode mydinode=myimapentry.inode;
+				if(mydinode.sector != 0 && mydinode.offset != 0){
+					count++; //Hay algo en el sector
+				}
+				if(myimapentry.inoden=n){
+					count--;
+					pinode=__load_inode(mydinode); //CARGO EL INODO
+					for(k=0;k<MAX_IDATA;k++){ //BORRO TODA LA DATA DEL INODO
+						__put__null((pinode->idata)[k]);
+					}
+					__put__null(&mydinode);
+				}
+			}
+			if(count==0){
+				__put__null(&actualentry.map);
+			}
 		}		
 	}
-	return -1;
+
+	// Si el imapa queda vacío borro también el puntero del CR al imapa
+	return 1;
 }
 
-bool __is_inode_dir(pinode myinode) {
-	if((*pinode).type)==FS_DIR){
+bool __is_inode_dir(inode * myinode) {
+	if(myinode->type)==FS_DIR){
 		return true; 
 	} return false;
 }
 
-bool __is_inode_file(pinode myinode) {
-	if((*pinode).type)==FS_FILE){
+bool __is_inode_file(inode * myinode) {
+	if(myinode->type)==FS_FILE){
 		return true; 
 	} return false;
 }
 
 /*//Returns -1 if it doesn't exist
 //Gets the inode number searching in the directory data for a char * file
-int __get_inode_from_directory(pinode myinode, char * name){
+int __get_inode_from_directory(dinode myinode, char * name){
 	if(!__is_inode_dir(myinode)){
 		return -1; 
 	}else{
@@ -109,56 +133,49 @@ int __get_inode_from_directory(pinode myinode, char * name){
 	}
 }*/
 
-int __get_last_inode(char * filename, pinode last, void * mypidata) {
-	pimap mypimap;
-	pinode mypinode;
+int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) {
+	dimap mydimap;
+	dinode mydinode;
 	ftype mytype;
 	int read,fnsize,myinoden;
 	char * dir;
 
 	while(filename[0]!='\0'){
 		fnsize=strlen(filename);
-		read=__get_cr_imap_n_inoden(filename, mypimap,myinoden);
+		read=__get_cr_imap_n_inoden(filename, mydimap,myinoden);
 		
 		//Cutting the filename - strcut with sprintf
 		char * newfilename=malloc((fnsize-i)+1);
 		sprintf(newfilename, "%.*s", fnsize-i, filename[i]);
 		filename=newfilename;
+		free(newfilename);
 
 		read=__get_fst_dir(filename, dir);
-		__get_inode_from_imap(mypimap,mypinode,myinoden);
-
-		__get_data_from_inode(mypinode,mytype,mypidata); //devuelvo idata y type
-		
-		if (mytype==FS_DIR){
-			mypidata = (ddata)mypidata;
-		}else if(mytype==FS_FILE){
-			mypidata=(fdata)mypidata;
-			last=mypinode;
-			return 0;
-		}
+		__get_inode_from_imap(mydimap,mydinode,myinoden);
+		__get_data_from_inode(mydinode,mytype,mydidata); //devuelvo idata y type
+	
 	}
 	return -1;
 }
 
-int __get_data_from_inode(pinode mypinode, ftype mytype, void * mypidata){
-	actualinode = __load_inode(mypinode);
+int __get_data_from_inode(dinode mydinode, ftype mytype, void * mydidata){
+	actualinode = __load_inode(mydinode);
 	mytype = actualinode.type;
-	mypidata = actualinode.idata;
+	mydidata = actualinode.idata;
 	return 0;
 }
 
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
-int __get_inode_from_imap(pimap mypimap, pinode mypinode, int myinoden){
+int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden){
 	for(i=0;i<MAX_INODES;i++){
-		imap_entry actual = (__load_imap(mypimap)->map)[i];
+		imap_entry actual = (__load_imap(mydimap)->map)[i];
 		if(actual==NULL){
 			return -1;	
 		}else{
 			if(actual.inoden==myinoden){
 				//No sube el inode a disco porque todavía no lo uso
-				mypinode=actual.inode; 
+				mydinode=actual.inode; 
 				return actual.inoden;
 			}
 		}
@@ -169,7 +186,7 @@ int __get_inode_from_imap(pimap mypimap, pinode mypinode, int myinoden){
 //TODO: . y .. !!
 // Busca el primer imap desde el CR (sea file o sea directory. Arreglate vos)
 // La idea sería obtener el imap del primer directorio para ir mapeando desde ahí
-int __get_cr_imap_n_inoden(char * filename, pimap mypimap, int myinoden) {
+int __get_cr_imap_n_inoden(char * filename, dimap mydimap, int myinoden) {
 	char * dir;
 	int read;
 
@@ -186,7 +203,7 @@ int __get_cr_imap_n_inoden(char * filename, pimap mypimap, int myinoden) {
 	for (i=0;i<=MAX_IMAP && !__is_null(localmap[i].map);i++){
 		cr_entry actualentry=localmap[i];
 		if(strcmp(actualentry.dir_name,dir)){
-			mypimap = actualentry.map;
+			mydimap = actualentry.map;
 			myinoden=actualentry.inoden;
 		}
 	}
@@ -235,6 +252,11 @@ disk_addr __disk_addr_new(unsigned short sector, int offset) {
 
 bool __is_null(disk_addr addr) {
 	return addr.sector == 0 && addr.offset == 0;
+}
+
+void __put__null(disk_addr * addr){
+	disk_addr->sector=0;
+	disk_addr->offset=0;
 }
 
 void * __load(disk_addr addr, int bytes) {

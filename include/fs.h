@@ -26,32 +26,32 @@ typedef enum {
 	FS_FILE, FS_DIR
 } ftype;
 
-typedef disk_addr pidata;
+typedef disk_addr didata;
 
 typedef struct {
 	int num;
 	ftype type;
-	pidata[MAX_IDATA] idata;
+	didata[MAX_IDATA] idata;
 	int fsize;
 } inode;
 
-typedef disk_addr pinode;
+typedef disk_addr dinode;
 
 typedef struct {
 	int inoden;
-	pinode inode;
+	dinode inode;
 } imap_entry;
 
 typedef struct {
 	imap_entry[MAX_INODES] map;
 } imap;
 
-typedef disk_addr pimap;
+typedef disk_addr dimap;
 
 typedef struct {
 	char[MAX_FILENAME] dir_name;
 	int inoden;
-	pimap map;
+	dimap map;
 } cr_entry;
 
 typedef struct {
