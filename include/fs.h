@@ -5,11 +5,12 @@
 #include "disk.h"
 
 #define DATA_BLOCK_SIZE 128
-#define MAX_IDATA 8
+#define MAX_IDATA 10 // Unix default
 #define MAX_INODES 512
-#define MAX_IMAP 512 // ??? shouldn't they be the same?
+#define MAX_IMAP 128 // ??? shouldn't they be the same?
 #define SEGMENT_SIZE 5*SECTOR_SIZE
 #define BUFFER_SIZE SEGMENT_SIZE // get an actual number for this, there's a formula!
+#define MAX_DIR_FILES 36
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
 #define MAX_LNODE_SIZE max(sizeof(inode),\
@@ -32,7 +33,7 @@ typedef struct {
 } ddata_entry;
 
 typedef struct {
-	ddata_entry map[MAX_INODES];
+	ddata_entry map[MAX_DIR_FILES];
 } ddata;
 
 typedef enum {
