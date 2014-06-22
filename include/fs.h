@@ -12,9 +12,9 @@
 #define BUFFER_SIZE SEGMENT_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
-#define MAX_LNODE_SIZE max(sizeof(inode), 
-						max(sizeof(imap),
-						max(sizeof(ddata),
+#define MAX_LNODE_SIZE max(sizeof(inode),\
+						max(sizeof(imap),\
+						max(sizeof(ddata),\
 							sizeof(fdata)))) // TODO: check if these cases are all!!
 
 typedef struct {

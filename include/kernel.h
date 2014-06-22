@@ -4,6 +4,14 @@
 #include "mtask.h"
 #include "segments.h"
 
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 /* gdt_idt.c */
 
 void mt_setup_gdt_idt(void);
