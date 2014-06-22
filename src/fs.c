@@ -19,9 +19,9 @@ static lnode * __load_lnode(dptr addr);
 static lnode * __next_lnode_buf(int * i);
 static lnode * __next_lnode(lnode * curr);
 //constructors
-static dptr __dptr_new(unsigned short sector, int offset);
-static checkpoint * __checkpoint_new(dptr lstart, dptr lend);
-static lnode * __lnode_new(lntype type, void * data, dptr next);
+static dptr __new_dptr(unsigned short sector, int offset);
+static checkpoint * __new_checkpoint(dptr lstart, dptr lend);
+static lnode * __new_lnode(lntype type, void * data, dptr next);
 //utils
 #define __SET(dest, src, size) memcpy(&(dest), &(src), size)
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
@@ -31,12 +31,12 @@ static void __lnode_append(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
 //debugging
-static void __checkpoint_print(checkpoint * cp);
-static void __dptr_print(dptr * addr);
-static void __imap_print(imap * imap);
-static void __inode_print(inode * inode);
-static void __ddata_print(ddata * ddata);
-static void __fdata_print(fdata * fdata);
+static void __print_checkpoint(checkpoint * cp);
+static void __print_dptr(dptr * addr);
+static void __print_imap(imap * imap);
+static void __print_inode(inode * inode);
+static void __print_ddata(ddata * ddata);
+static void __print_fdata(fdata * fdata);
 static char * __lntype_to_str(lntype type);
 static char * __ftype_to_str(ftype type);
 static void __lnode_print(lnode * lnode);
@@ -60,6 +60,7 @@ static lnode * __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
 /*TODO: static char * pwd;*/
 
 int testfs() {
+	__inoden = 0; // REMOVE!
 	create(ATA0, 1<<15);
 	//init(); //TODO:remove!
 	printk("Chau!\n");
@@ -74,28 +75,35 @@ void create(int drive, int size){
 
 	printk("Creating CR...\n");
 	printk("fs size (total)=%d bytes\nCR size=%d bytes\nlog size=%d bytes\n", size, sizeof(checkpoint), __log_size);
-	start = __dptr_add(__dptr_new(0, 0), sizeof(checkpoint));
-	__cp = __checkpoint_new(start, start);
-	__checkpoint_print(__cp);
+	start = __dptr_add(__new_dptr(0, 0), sizeof(checkpoint));
+	__cp = __new_checkpoint(start, start);
+	__print_checkpoint(__cp);
 	printk("\n");
 	printk("...Done\n");
 
-	/*
-	printk("Syncing CR...\n");
-	__sync_cr(__dptr_new(0, 0));
-	printk("...Done\n");
-	*/
-
 	printk("Creating /...\n");
 	__mkdir("/");
+	printk("...Done\n");
+
+	printk("Syncing CR...\n");
+	__sync_cr(__new_dptr(0, 0));
+	printk("...Done\n");
+
+	printk("Syncing log buffer...\n");
+	__sync_log_buf();
+	printk("...Done\n");
+
+	printk("Loading CR...");
+	__cp = __load_checkpoint(__new_dptr(0,0));
+	__print_checkpoint(__cp);
 	printk("...Done\n");
 }
 
 void init() {
 	printk("Starting FS...\n");
 	__log_buf_size = 0;
-	__cp = __load_checkpoint(__dptr_new(0, 0));
-	__checkpoint_print(__cp);
+	__cp = __load_checkpoint(__new_dptr(0, 0));
+	__print_checkpoint(__cp);
 	printk("\n");
 	printk("...Done\n");
 }
@@ -119,11 +127,11 @@ void __mkdir(char * basename) {
 	__set_dptr(imap.map[0].inode, prev);
 	__lnode_append(FS_IMAP, &imap);
 
-	__ddata_print(&data);
+	__print_ddata(&data);
 	printk("\n");
-	__inode_print(&inode);
+	__print_inode(&inode);
 	printk("\n");
-	__imap_print(&imap);
+	__print_imap(&imap);
 	printk("\n");
 }
 
@@ -142,6 +150,7 @@ void __mkdir(char * basename) {
 // Ahora modifico el imap que estaba apuntando a ese inodo
 // Deberia quedar en BUFFER: fdata (nuevo), inodo modificado e imapa modificado.
 // Despues se ocupara de bajar a disco otra parte 
+/*
 int append(char * dir, void * txt) { //TERE
 	imap * mypimap;
 	inode * mypinode;
@@ -376,6 +385,7 @@ int __get_fst_dir(char * filename, char * dir) {
 	return i;
 }
 
+*/
 
 lnode * __next_lnode_buf(int * i) {
 	if (*i >= __log_buf_size) {
@@ -411,7 +421,7 @@ void __write(void * data, int bytes, dptr address) {
 	ata_write(__drive, data, bytes, address.sector, address.offset);
 }
 
-dptr __dptr_new(unsigned short sector, int offset) {
+dptr __new_dptr(unsigned short sector, int offset) {
 	dptr addr;
 	addr.sector = sector;
 	addr.offset = offset;
@@ -427,7 +437,7 @@ void __put_null(dptr * addr){
 	addr->offset = 0;
 }
 
-checkpoint * __checkpoint_new(dptr lstart, dptr lend) {
+checkpoint * __new_checkpoint(dptr lstart, dptr lend) {
 	checkpoint * cp = malloc(sizeof(checkpoint));
 	cp->lstart.sector = lstart.sector;
 	cp->lstart.offset = lstart.offset;
@@ -437,15 +447,8 @@ checkpoint * __checkpoint_new(dptr lstart, dptr lend) {
 }
 
 dptr __dptr_add(dptr address, int bytes) {
-	//printk("__dptr_print:\n");
-	//__dptr_print(&address);
 	int _bytes = address.sector * SECTOR_SIZE + address.offset + bytes;
-	//printk("+%d d=%d d\n", bytes, _bytes);
-	dptr ans = __dptr_new(_bytes/SECTOR_SIZE, _bytes%SECTOR_SIZE);
-	//printk("(");
-	//__dptr_print(&ans);
-	//printk(")\n");
-	return ans;
+	return __new_dptr(_bytes/SECTOR_SIZE, _bytes%SECTOR_SIZE);
 }
 
 void * __load(dptr addr, int bytes) {
@@ -466,26 +469,17 @@ lnode * __load_lnode(dptr addr) {
 }
 
 void __lnode_append(lntype type, void * data) {
-	//printk("__cp->lend: ");
-	//__dptr_print(&__cp->lend);
-	//printk("\n");
-	//printk("new_end: ");
 	dptr new_end = __dptr_add(__cp->lend, __sizeof_lntype(type));
-	//__dptr_print(&new_end);
-	//printk("\n");
-	__log_buf_append(__lnode_new(type, data, new_end), __sizeof_lntype(type));
+	__log_buf_append(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
 }
 
 void __log_buf_append(void * data, int bytes) {
-	//printk("BUFFER_SIZE: %d, bytes: %d\n", BUFFER_SIZE, bytes);
 	memcpy(__log_buf+__log_buf_size, data, bytes);
-	//printk("__log_buf_size (before): %d\n", __log_buf_size);
 	__log_buf_size += bytes;
-	//printk("__log_buf_size (after): %d\n", __log_buf_size);
 }
 
-lnode * __lnode_new(lntype type, void * data, dptr next) {
+lnode * __new_lnode(lntype type, void * data, dptr next) {
 	int size = __sizeof_lntype(type);
 	lnode * lnptr = malloc(sizeof(lnode)+size);
 	lnptr->type = type;
@@ -510,30 +504,30 @@ int __sizeof_lntype(lntype type) {
 	return -1;//CHECK!
 }
 
-void __checkpoint_print(checkpoint * cp) {
+void __print_checkpoint(checkpoint * cp) {
 	printk("checkpoint:{\n\tlstart: ");
-	__dptr_print(&(cp->lstart));
+	__print_dptr(&(cp->lstart));
 	printk("\n\tlend: ");
-	__dptr_print(&(cp->lend));
+	__print_dptr(&(cp->lend));
 	printk("\n}");
 }
 
-void __dptr_print(dptr * addr) {
+void __print_dptr(dptr * addr) {
 	printk("dptr:{ sector:%d, offset:%d } (#%d d)", addr->sector, addr->offset, addr->sector*SECTOR_SIZE+addr->offset);
 }
 
-void __imap_print(imap * imptr) {
+void __print_imap(imap * imptr) {
 	int i;
 	printk("imap:{\n");
 	for (i=0; i<MAX_IMAP && !__is_null(imptr->map[i].inode); i++) {
 		printk("\t{ inoden:%d, inode: ", imptr->map[i].inoden);
-		__dptr_print(&imptr->map[i].inode);
+		__print_dptr(&imptr->map[i].inode);
 		printk("}\n");
 	}
 	printk("\n}");
 }
 
-void __inode_print(inode * inptr) {
+void __print_inode(inode * inptr) {
 	int i;
 	printk("inode:{\n");
 	printk("\tnum: %d\n", inptr->num);
@@ -542,7 +536,7 @@ void __inode_print(inode * inptr) {
 	printk("\tidata:{\n");
 	for (i=0; i<MAX_IDATA && !__is_null(inptr->idata[i]); i++) {
 		printk("\t\t");
-		__dptr_print(&(inptr->idata[i]));
+		__print_dptr(&(inptr->idata[i]));
 		printk("\n");
 	}
 	printk("\t}\n}");
@@ -572,7 +566,7 @@ char * __ftype_to_str(ftype type) {
 	return "error";
 }
 
-void __ddata_print(ddata * ddptr) {
+void __print_ddata(ddata * ddptr) {
 	int i;
 	printk("ddata:{\n");
 	for (i=0; i<MAX_DIR_FILES && strlen(ddptr->map[i].name) != 0; i++) {
@@ -582,7 +576,7 @@ void __ddata_print(ddata * ddptr) {
 	printk("\n}");
 }
 
-void __fdata_print(fdata * fdptr) {
+void __print_fdata(fdata * fdptr) {
 	printk("fdata:{\n\t%s\n}", fdptr->data);
 }
 
@@ -590,20 +584,20 @@ void __lnode_print(lnode * lnptr) {
 	printk("lnode:{\n");
 	printk("\ttype: %s\n", __lntype_to_str(lnptr->type));
 	printk("\tnext: ");
-	__dptr_print(&lnptr->next);
+	__print_dptr(&lnptr->next);
 	printk("\n\tdata:{\n\t\t");
 	switch(lnptr->type) {
 	case FS_IMAP:
-		__imap_print((imap *)lnptr->data);
+		__print_imap((imap *)lnptr->data);
 		break;
 	case FS_INODE:
-		__inode_print((inode *)lnptr->data);
+		__print_inode((inode *)lnptr->data);
 		break;
 	case FS_DDATA:
-		__ddata_print((ddata *)lnptr->data);
+		__print_ddata((ddata *)lnptr->data);
 		break;
 	case FS_FDATA:
-		__fdata_print((fdata *)lnptr->data);
+		__print_fdata((fdata *)lnptr->data);
 		break;
 	}
 	printk("\n\t}\n}\n");
