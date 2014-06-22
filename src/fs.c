@@ -157,7 +157,7 @@ int append(char * dir, void * txt) { //TERE
 }
 
 // borra archivo o directorio (con todo lo que tenga adentro)
-/*int remove(char * dir) {
+int remove(char * dir) {
 	// Cambia de acuerdo a si es un archivo o un directorio cambia el comportamiento
 	int n,flag=0,count=0;
 	imap_entry myimapentry;
@@ -193,22 +193,22 @@ int append(char * dir, void * txt) { //TERE
 	// Si el imapa queda vacío borro también el puntero del CR al imapa
 	return 1;
 }
-*/
-/*bool __is_inode_dir(inode * myinode) {
+
+bool __is_inode_dir(inode * myinode) {
 	if(myinode->type)==FS_DIR){
 		return true; 
 	} return false;
-}*/
+}
 
-/*bool __is_inode_file(inode * myinode) {
+bool __is_inode_file(inode * myinode) {
 	if(myinode->type)==FS_FILE){
 		return true; 
 	} return false;
-}*/
+}
 
 //Returns -1 if it doesn't exist
 //Gets the inode number searching in the directory data for a char * file
-/*int __get_inode_from_directory(dinode myinode, char * name){
+int __get_inode_from_directory(dinode myinode, char * name){
 	if(!__is_inode_dir(myinode)){
 		return -1; 
 	}else{
@@ -220,9 +220,9 @@ int append(char * dir, void * txt) { //TERE
 		}
 		return -1;
 	}
-}*/
+}
 
-/*int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) {
+int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) {
 
 	dimap mydimap;
 	dinode mydinode;
@@ -312,12 +312,12 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	mytype = actualinode.type;
 	mydidata = actualinode.idata;
 	return 0;
-}*/
+}
 
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
 int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden, imap * retimap){
-
+	int i;
 	for(i=0;i<MAX_INODES;i++){
 		imap * pimap=__load_imap(mydimap):
 		imap_entry actual = (pimap->map)[i];
@@ -337,7 +337,7 @@ int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden, imap * r
 //TODO: . y .. !!
 // Busca el primer imap desde el CR (sea file o sea directory. Arreglate vos)
 // La idea sería obtener el imap del primer directorio para ir mapeando desde ahí
-/*int __get_cr_imap_n_inoden(char * filename, dimap mydimap, int myinoden) {
+int __get_cr_imap_n_inoden(char * filename, dimap mydimap, int myinoden) {
 	char * dir;
 	int read;
 
@@ -359,7 +359,7 @@ int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden, imap * r
 		}
 	}
 	return read;
-}*/
+}
 
 // Gets the first director copying everything before /
 // Returns number of chars read
