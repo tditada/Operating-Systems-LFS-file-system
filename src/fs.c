@@ -93,11 +93,16 @@ int touch() { //JP
 	// mismo que mkdir pero para archivos
 }
 
-int append(char * dir) { //TERE
-	//Agarro el inodo
-	dinode mydinode=__load_inode(__get_last_inode());
-	if(strlen((mydinode->idata)[i])) //?? Revisar punteros
+int append(char * dir, void * txt) { //TERE
+	imap * mypimap;
+	inode * mypinode;
+	void * myidata;
 
+	//Agarro el inodo y le agrego otro segmento de datos
+	if(__get_last(dir,mypimap, mypinode, myidata)==-1){
+		return -1;
+	}
+	
 	// __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) 
 	// Si el inodo no es un archivo, ERROR
 	// Si es un archivo 
