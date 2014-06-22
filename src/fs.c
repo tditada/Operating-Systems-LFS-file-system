@@ -93,10 +93,14 @@ int touch() { //JP
 	// mismo que mkdir pero para archivos
 }
 
-int append() {
+int append(char * dir) { //TERE
 	//Agarro el inodo
 	dinode mydinode=__load_inode(__get_last_inode());
 	if(strlen((mydinode->idata)[i])) //?? Revisar punteros
+
+	// __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) 
+	// Si el inodo no es un archivo, ERROR
+	// Si es un archivo 
 }
 
 // borra archivo o directorio (con todo lo que tenga adentro)
@@ -165,32 +169,91 @@ int __get_inode_from_directory(dinode myinode, char * name){
 	}
 }
 
-int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) {
+int __get_last(char * filename, imap * lastimap, inode * lastinode, void * myidata) {
 	dimap mydimap;
 	dinode mydinode;
 	ftype mytype;
+	void * mydidata;
+	imap * mypimap;
+	inode * mypinode;
 	int read,fnsize,myinoden;
 	char * dir;
 
+	//COMO LLENO LAS ULTIMAS COSAS CUANDO NO ENTRA EN EL CASO FILE?!?!?!?
 	while(filename[0]!='\0'){
 		fnsize=strlen(filename);
-		read=__get_cr_imap_n_inoden(filename, mydimap,myinoden);
+		read=__get_cr_imap_n_inoden(filename, mydimap,myinoden); 
+		// ^^^ BUSCA DESDE EL CR, NO SUBE NADA A DISCO PORQUE USA CR_ENTRY
 		
 		//Cutting the filename - strcut with sprintf
 		char * newfilename=malloc((fnsize-i)+1);
-		sprintf(newfilename, "%.*s", fnsize-i, filename[i]);
+		sprintf(newfilename, "%.*s", fnsize-read, filename[read]);
 		filename=newfilename;
 		free(newfilename);
 
 		read=__get_fst_dir(filename, dir);
-		__get_inode_from_imap(mydimap,mydinode,myinoden);
-		__get_data_from_inode(mydinode,mytype,mydidata); //devuelvo idata y type
-	
-	}
-	return -1;
+
+		//ATAJO ERRORES
+		if(__get_inode_from_imap(mydimap,mydinode,myinoden,mypimap)==-1){
+			return -1;
+		}else if(__get_data_from_inode(mydinode,mypinode,mytype,mydidata)){
+			return -1;
+		}; //devuelvo idata y type
+		// ^^^ no me tiene que dar el numero de inodo???!?!?!??!
+
+		//TODO: SI ES UN ARCHIVO LO PROXIMO A BUSCAR NO TIENE QUE VOLVER AL WHILE
+		//Los archivos no están en el CR!! estan en el imap del directorio al que pertenecen
+		if(__is_last_dir(filename)){ //PREGUNTO SI LO QUE QUEDA ES EL ULTIMO
+			//LEVANTO LA DATA DE DISCO DEL ULTIMO DIRECTORIO (EL ANTERIOR)
+			bool found=false;
+			ddata * myddata = __load_ddata(mydidata);
+			for(i=0;i<MAX_INODES;i++){ 
+				//BUSCO DENTRO DE LOS DATOS DEL DIRECTORIO EL INODO PARA IR AL MAPA
+				ddata_entry actual_ddata_entry = (myddata->map)[i];
+				if(strcmp(actual_ddata_entry.name,filename)){
+					myinoden=actual_ddata_entry.inoden;
+					//ENCONTRE EL INODO: BUSCA EN EL IMAPA QUE YA TENGO.
+					for(j=0;j<MAX_INODES;j++){
+						imap_entry actual_imap_entry = (mypimap->map)[j];
+						if(actual_imap_entry.inoden == myinoden){
+							//LO ENCONTREEEEEEEEEEEE
+							//SUBO LA DATA Y EL INODO
+							lastimap=mypimap; //GUARDO EL imapa 
+							__get_inode_from_imap(mydimap,mydinode,myinoden,mypimap);
+							__get_data_from_inode(mydinode,mypinode,mytype,mydidata);
+							lastinode=mypinode;
+							myidata = __load_fdata(mydidata);
+							return 0;
+						}
+					}
+					found=true; //ERA UN ARCHIVO!!! :)
+				}
+			}
+			if(!found){
+				//ERA UN DIRECTORIO Y NO UN ARCHIVO, LO BUSCO DESDE EL CR NORMALMENTE (SIGO EN EL WHILE SIN HACER NADA)
+			}
+		}
+
+	} 
+	lastimap=mypimap;
+	lastinode=mypinode;
+	myidata=__load_ddata(mydidata); //SI HUBIERA SIDO UN FILE ENTRABA EN EL CASO ANTES
+	return 0; //CUANDO FALLA?????
 }
 
-int __get_data_from_inode(dinode mydinode, ftype mytype, void * mydidata){
+bool __is_last_dir(char * dir){
+	if(dir[0]=='\0'){ //YA ESTA VACIO!
+			return false;
+	}
+	for(i=0;i<strlen(dir);i++){
+		if(dir[i]=='/'){ 
+			return false;
+		}
+	}
+	return true;
+}
+
+int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, void * mydidata){
 	actualinode = __load_inode(mydinode);
 	mytype = actualinode.type;
 	mydidata = actualinode.idata;
@@ -199,9 +262,10 @@ int __get_data_from_inode(dinode mydinode, ftype mytype, void * mydidata){
 
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
-int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden){
+int __get_inode_from_imap(dimap mydimap, dinode mydinode, int myinoden, imap * retimap){
 	for(i=0;i<MAX_INODES;i++){
-		imap_entry actual = (__load_imap(mydimap)->map)[i];
+		imap * pimap=__load_imap(mydimap):
+		imap_entry actual = (pimap->map)[i];
 		if(actual==NULL){
 			return -1;	
 		}else{
@@ -236,7 +300,7 @@ int __get_cr_imap_n_inoden(char * filename, dimap mydimap, int myinoden) {
 		cr_entry actualentry=localmap[i];
 		if(strcmp(actualentry.dir_name,dir)){
 			mydimap = actualentry.map;
-			myinoden=actualentry.inoden;
+			myinoden = actualentry.inoden;
 		}
 	}
 	return read;
@@ -248,6 +312,9 @@ int __get_fst_dir(char * filename, char * dir) {
 	int i=1;
 	while (filename[i-1] != '\0' && filename[i-1] != '/') {
 		i++;
+	}
+	if(i==1 && strlen(filename)!=0){
+		filename='/';
 	}
 
 	dir = malloc(sizeof(char) * (i+1));
