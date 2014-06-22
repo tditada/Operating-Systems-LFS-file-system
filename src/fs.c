@@ -127,12 +127,6 @@ void __mkdir(char * basename) {
 	printk("\n");
 }
 
-/*int mkdir(char * filename){
-	// TODO: aca hago un lookup, primero en el buffer
-
-
-}*/
-
 //TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
 //TODO: sync: baja a disco
 
@@ -140,6 +134,14 @@ void __mkdir(char * basename) {
 	// mismo que mkdir pero para archivos
 }*/
 
+// COSAS PARA HACER EN EL APPEND
+// Appendeo un cacho de data a un archivo que ya existe (al final)!
+// La idea sería: traer el inodo que referencia el archivo.
+// Lo tengo que modificar y volver al buffer
+// Lo lleno con la dirección de disco como en mkdir
+// Ahora modifico el imap que estaba apuntando a ese inodo
+// Deberia quedar en BUFFER: fdata (nuevo), inodo modificado e imapa modificado.
+// Despues se ocupara de bajar a disco otra parte 
 int append(char * dir, void * txt) { //TERE
 	imap * mypimap;
 	inode * mypinode;
@@ -150,9 +152,6 @@ int append(char * dir, void * txt) { //TERE
 		return -1;
 	}
 	
-	// __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) 
-	// Si el inodo no es un archivo, ERROR
-	// Si es un archivo 
 }
 
 // borra archivo o directorio (con todo lo que tenga adentro)
@@ -160,7 +159,7 @@ int remove(char * dir) {
 	// Cambia de acuerdo a si es un archivo o un directorio cambia el comportamiento
 	int n,flag=0,count=0;
 	imap_entry myimapentry;
-	cr_entry * map=(crp->map);
+	cr_entry * map=(__cp->map);
 	inode * pinode;
 	// Borra el puntero al inodo del imapa.. 
 	for(i=0;i<=MAX_IMAP;i++){ //RECORRO EL CR
