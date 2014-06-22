@@ -8,13 +8,14 @@
 #define MAX_IDATA 8
 #define MAX_INODES 512
 #define MAX_IMAP 512 // ??? shouldn't they be the same?
-#define BUFFER_SIZE 5*SECTOR_SIZE // get an actual number for this, there's a formula!
+#define SEGMENT_SIZE 5*SECTOR_SIZE
+#define BUFFER_SIZE SEGMENT_SIZE // get an actual number for this, there's a formula!
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
 #define MAX_LNODE_SIZE max(sizeof(inode), 
 						max(sizeof(imap),
-						 max(sizeof(ddata),
-						 	sizeof(fdata)))) // TODO: check if these cases are all!!
+						max(sizeof(ddata),
+							sizeof(fdata)))) // TODO: check if these cases are all!!
 
 typedef struct {
 	unsigned short sector;
@@ -74,10 +75,10 @@ typedef struct {
 
 typedef enum {
 	FS_IMAP, FS_INODE, FS_DDATA, FS_FDATA
-} ntype;
+} lntype;
 
 typedef struct {
-	ntype type; // /!\ MUST BE FIRST!
+	lntype type; // /!\ MUST BE FIRST!
 	dptr next;
 	char data[0];
 } lnode;

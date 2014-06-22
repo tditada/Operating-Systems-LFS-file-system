@@ -7,10 +7,10 @@ static void __sync_log_buf();
 static void __sync_cr(disk_addr address);
 static void __write(void * data, int bytes, disk_addr address);
 //loads
-#define __LOAD(type, addr) ((type *)__load(addr, sizeof(type)))
 static void * __load(disk_addr addr, int bytes);
 static lnode * __load_lnode(disk_addr addr);
 #define __load_checkpoint(addr) __LOAD(checkpoint, addr)
+#define __LOAD(type, addr) ((type *)__load_lnode(addr, sizeof(type)))
 #define __load_imap(addr) __LOAD(imap, addr)
 #define __load_inode(addr) __LOAD(inode, addr)
 #define __load_ddata(addr) __LOAD(ddata, addr)
@@ -21,16 +21,25 @@ static lnode * __next_lnode(lnode * curr);
 //constructors
 static disk_addr __disk_addr_new(unsigned short sector, int offset);
 static checkpoint * __checkpoint_new(disk_addr lstart, disk_addr lend);
+static lnode * __lnode_new(lntype type, void * data, dptr next);
 //utils
+#define __set(dest, src, size) memcpy(&(dest), &(src), size)
+#define __set_addr(dest, src) __set(dest, src, sizeof(dpr))
 static bool __is_null(disk_addr addr);
+static void __log_buf_append(void * data, int bytes);
+static void __lnode_append(lntype type, void * data);
+static int __lntype_size(ftype type);
 //debugging
 static void __checkpoint_print(checkpoint * cp);
 static void __disk_addr_print(disk_addr * addr);
 
+
 //vars
 static int __drive;
+static int __log_size;
 
 static checkpoint * __cp;
+static int __cp_size = 0;
 
 static char __log_buf[BUFFER_SIZE];
 static int __log_buf_size = 0;
@@ -53,17 +62,20 @@ int testfs() {
 }
 
 void create(int drive, int size){
-	__drive = drive;
+	dptr start;
 
-	/* TODO:
-	mkdir de /
-	mkdir("/");
-	*/
+	__drive = drive;
+	__log_size = size - sizeof(checkpoint);
 
 	printk("Creating CR...\n");
-	__cp = __checkpoint_new(__disk_addr_new(MAX_IMAP/SECTOR_SIZE, MAX_IMAP%SECTOR_SIZE),
-		__disk_addr_new(size/SECTOR_SIZE, size%SECTOR_SIZE));
+	start = __disk_addr_add(__disk_addr_new(0, 0), sizeof(checkpoint));
+	__cp = __checkpoint_new(start, __disk_addr_add(start, size));
 	__checkpoint_print(__cp);
+	printk("\n");
+	printk("...Done\n");
+
+	printk("Creating /...\n");
+	__mkdir("/");
 	printk("\n");
 	printk("...Done\n");
 }
@@ -76,9 +88,20 @@ void init() {
 	printk("...Done\n");
 }
 
-/*int __mkdir(char * filename) {
-	
-}*/
+// /!\ NOT the filename!
+int __mkdir(char * basename) {
+	ddata data;
+	inode inode;
+	imap imap;
+
+	imap.map.inoden = ind.num = __cp_size;
+	inode.type = FS_DIR;
+	__set_addr(imap.map, __cp->lend);
+
+	__lnode_append(data, sizeof(ddata));
+	__lnode_append(ind, sizeof(inode));
+	__lnode_append(imap, sizeof(imap));
+}
 
 /*int mkdir(char * filename){
 	// TODO: aca hago un lookup, primero en el buffer
@@ -256,6 +279,11 @@ int __get_fst_dir(char * filename, char * dir) {
 	return i;
 }
 
+void __log_buf_append(void * data, int bytes) {
+	memcpy(__log_buf+__log_buf_size, data, bytes);
+	__log_buf_size += bytes;
+}
+
 lnode * __next_lnode_buf(int * i) {
 	if (*i >= __log_buf_size) {
 		return NULL;
@@ -267,6 +295,13 @@ lnode * __next_lnode_buf(int * i) {
 lnode * __next_lnode(lnode * curr) {
 	return __load_lnode(curr->next);
 }
+
+/*dptr * __next_segment_start(int * i) {
+	*i = (*i+1)%(__log_size/SEGMENT_SIZE);
+	int 
+	return __next+;
+}
+*/
 
 void __sync_log_buf() {
 	int i, bytes;
@@ -306,35 +341,6 @@ void __put__null(disk_addr * addr){
 	disk_addr->offset=0;
 }
 
-void * __load(disk_addr addr, int bytes) {
-	void * data = malloc(bytes);
-	ata_read(__drive, data, bytes, addr.sector, addr.offset);
-	return data;
-}
-
-lnode * __load_lnode(disk_addr addr) {
-	void * data = load(addr, MAX_LNODE_SIZE);
-	int actual_size;
-	switch(((int *)data)[0]) {
-	case FS_IMAP:
-		actual_size = sizeof(imap);
-		break;
-	case FS_INODE:
-		actual_size = sizeof(inode);
-		break;
-	case FS_DDATA:
-		actual_size = sizeof(ddata);
-		break;
-	case FS_FDATA:
-		actual_size = sizeof(fdata);
-		break;
-	//TODO: check for more cases!
-	}
-	free(data + actual_size, MAX_LNODE_SIZE - actual_size);
-	//or else you'll read garbage
-	return (lnode) data;
-}
-
 checkpoint * __checkpoint_new(disk_addr lstart, disk_addr lend) {
 	checkpoint * cp = malloc(sizeof(checkpoint));
 	cp->lstart.sector = lstart.sector;
@@ -354,4 +360,56 @@ void __checkpoint_print(checkpoint * cp) {
 
 void __disk_addr_print(disk_addr * addr) {
 	printk("disk_addr:{ sector:%d, offset:%d }", addr->sector, addr->offset);
+}
+
+dptr __disk_addr_add(dptr address, int bytes) {
+	int base_bytes = address.sector * SECTOR_SIZE + address.offset;
+	return __disk_addr_new((base_bytes+bytes)/SECTOR_SIZE, (base_bytes+bytes)%SECTOR_SIZE);
+}
+
+void * __load(disk_addr addr, int bytes) {
+	void * data = malloc(bytes);
+	ata_read(__drive, data, bytes, addr.sector, addr.offset);
+	return data;
+}
+
+lnode * __load_lnode(disk_addr addr) {
+	lnode * data = malloc(MAX_LNODE_SIZE);
+	ata_read(__drive, data, MAX_LNODE_SIZE, addr.sector, addr.offset);
+
+	int size = __lntype_size(((int *)data)[0]);
+	free(data + size, MAX_LNODE_SIZE - size);
+	//or else you'll read garbage
+
+	return (lnode) data;
+}
+
+lnode * __lnode_new(lntype type, void * data, dptr next) {
+	int size = __lntype_size(type);
+	lnode * lnode = malloc(sizeof(lnode)+size);
+	lnode->type = type;
+	__set_addr(lnode->next, next);
+	memcpy(lnode->data, data, size);
+	return lnode;
+}
+
+void __lnode_append(lntype type, void * data) {
+	dptr new_end = __disk_addr_add(cp->end, __lntype_size(type));
+	__log_buf_append(__lnode_new(type, data, next), new_end);
+	__set_addr(__cp->end, next_end);
+}
+
+int __lntype_size(ftype type) {
+	switch(type) {
+	case FS_IMAP:
+		return sizeof(imap);
+	case FS_INODE:
+		return sizeof(inode);
+	case FS_DDATA:
+		return sizeof(ddata);
+	case FS_FDATA:
+		return sizeof(fdata);
+	//TODO: check for more cases!
+	}
+	return -1;//CHECK!
 }
