@@ -8,9 +8,10 @@ static void __sync_cr(disk_addr address);
 static void __write(void * data, int bytes, disk_addr address);
 //loads
 static void * __load(disk_addr addr, int bytes);
+#define __load_checkpoint(addr) __load(checkpoint, addr)
 static lnode * __load_lnode(disk_addr addr);
 #define __load_checkpoint(addr) __LOAD(checkpoint, addr)
-#define __LOAD(type, addr) ((type *)__load_lnode(addr, sizeof(type)))
+#define __LOAD(type, addr) ((type *)(__load_lnode(addr, sizeof(type))->data))
 #define __load_imap(addr) __LOAD(imap, addr)
 #define __load_inode(addr) __LOAD(inode, addr)
 #define __load_ddata(addr) __LOAD(ddata, addr)
