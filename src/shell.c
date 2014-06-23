@@ -108,7 +108,7 @@ int cd(int argc, char *argv[]){
 		}else{
 			pwd=pwd+dir;
 		}
-		return 0;
+		return 1;
 	} else{
 		return -1;
 	}

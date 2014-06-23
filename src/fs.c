@@ -290,6 +290,22 @@ bool __is_inode_file(inode * myinode) {
 	} return false;
 }
 
+//Returns -1 if it doesn't exist
+//Gets the inode number searching in the directory data for a char * file
+int __get_inode_from_directory(dinode myinode, char * name) {
+	if (!__is_inode_dir(myinode)) {
+		return -1; 
+	} else {
+		ddata_entry[MAX_DIR_FILES] dmap =((myinode->idata).ddata).map;
+		for (i=0; i<MAX_DIR_FILES && dmap[i]!=NULL;i++) {
+			if (streq(dmap[i],name)) {
+				return dmap[i].inoden;
+			}
+		}
+		return -1;
+	}
+}
+
 //For SHELL use (cd command). Given a direction, searchs for it in the cr
 bool __search_cr(char * dir){
 	for(i=0;i<MAX_IMAP;i++){
@@ -423,7 +439,7 @@ int __get_inode(dimap dimap, dinode * dinode, int inoden, imap * retimap) {
 int __get_cr_entry(char * filename, cr_entry * crep) {
 	char dir[MAX_FILENAME];
 	int i, read = __get_fst_dir(filename, dir);
-	if (streq(filename, "/")) {
+	/*if (streq(filename, "/")) {
 		//peola
 	} else if (streq(filename,".")
 		|| streq(filename, "..")) {
@@ -431,7 +447,7 @@ int __get_cr_entry(char * filename, cr_entry * crep) {
 	} else {
 		//caso Tere/Downloads
 		//agregar el pwd
-	}
+	}*/
 	cr_entry * map = __cp->map;
 	for (i=0; i<=MAX_IMAP && !__is_null(map[i].map);i++) {
 		if (streq(map[i].dir_name, dir)) {
