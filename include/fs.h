@@ -8,8 +8,7 @@
 #define MAX_IDATA 10 // Unix default
 #define MAX_INODES 512
 #define MAX_IMAP 128 // ??? shouldn't they be the same?
-#define SEGMENT_SIZE 5*SECTOR_SIZE
-#define BUFFER_SIZE SEGMENT_SIZE // get an actual number for this, there's a formula!
+#define BUFFER_SIZE 20*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
 #define MAX_DIR_FILES 36
 #define MAX_PATH 1024
 #define MAX_FILENAME 64
