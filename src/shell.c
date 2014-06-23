@@ -5,7 +5,9 @@
 
 #define BUFSIZE 200
 #define NARGS 20
-#define PROMPT "MT> "
+#define PROMPT "sOS> "
+
+static pwd='/';
 
 static struct cmdentry
 {
@@ -24,7 +26,8 @@ cmdtab[] =
 	{	"camino_ns",	camino_ns_main },
 	{	"prodcons",		prodcons_main },
 	{	"divz",			divz_main },
-	{	"testfs",		testfs }
+	{	"testfs",		testfs },
+	{   "cd",			cd}
 };
 
 int
@@ -89,5 +92,23 @@ shell_main(int argc, char **argv)
 
 		if ( !found )
 			cprintk(LIGHTRED, BLACK, "Comando %s desconocido\n", args[0]);
+	}
+}
+
+
+
+int cd(int argc, char *argv[]){
+	//La tabla del CR en RAM siempre está actualizada !!!!
+	//uso bool __search_cr(char * dir) de fs.c
+	if(__search_cr(dir)){
+		if(dir[0]=='/'){
+			//Direccion absoluta
+			pwd=dir;
+		}else{
+			pwd=pwd+dir;
+		}
+		return 1;
+	} else{
+		return -1;
 	}
 }

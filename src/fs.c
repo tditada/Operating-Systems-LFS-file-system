@@ -194,18 +194,18 @@ void __add_cr_entry(const char * dirname, int inoden, dimap map) {
 // Ahora modifico el imap que estaba apuntando a ese inodo
 // Deberia quedar en BUFFER: fdata (nuevo), inodo modificado e imapa modificado.
 // Despues se ocupara de bajar a disco otra parte 
-/*
+
 int append(char * dir, void * txt) { //TERE
 	imap * mypimap;
 	inode * mypinode;
 	void * myidata;
-	int inodedir;
+	int inodedir, imapdir;
 
 	//Agarro el inodo y le agrego otro segmento de datos
 	if (__get_last(dir,mypimap, mypinode, myidata)==-1) {
 		return -1;
 	}
-
+	int myinoden=mypinode->num;
 	//Recorro el inodo mypinode
 	for(i=0;i<=MAX_INODES;i++){
 		didata myddata = mypinode->idata[i];
@@ -218,12 +218,20 @@ int append(char * dir, void * txt) { //TERE
 			__set_dptr(mypinode->idata[i], prev);
 			//EN EL INODO TENGO QUE CAMBIAR EL DATO Y APENDEARLO DE NUEVO
 			inodedir=prev+sizeof(*mynewpfdata);
+			imapdir=inode+sizeof(*mypinode);
 			__lnode_append(FS_INODE,mypinode);
 			//TENGO QUE CAMBIAR EL CACHO DE IMAPA QUE APUNTABA AL INODO QUE APPENDEE			
 			//COMO LO TENGO SUBIDO A MEMORIA PUEDO RECORRERLO TRANQUILAMENTE
 			for(j=0;j<=MAX_IMAP;j++){
-				if((mydimap->map[j]).inoden==pinode->num){	
-					//RECORRO EL CR
+				if((mypimap->map[j]).inoden==myinoden){	
+					__set_dptr((mypimap->map[j]).inode,inodedir);
+					__lnode_append(FS_IMAP,mypimap);
+				}
+			}
+			for(j=0;j<MAX_IMAP;j++){ 	//RECORRO EL CR
+				cr_entry actual = __cp->map[j];
+				if(actual.inoden==myinoden){
+					__set_dptr(actual.dimap,imapdir);
 				}
 			}
 		}
@@ -296,6 +304,16 @@ int __get_inode_from_directory(dinode myinode, char * name) {
 		}
 		return -1;
 	}
+}
+
+//For SHELL use (cd command). Given a direction, searchs for it in the cr
+bool __search_cr(char * dir){
+	for(i=0;i<MAX_IMAP;i++){
+		if(strcmp((__cp->map)[i].dir_name, dir)){
+			return true;
+		}	
+	}
+	return false;
 }
 
 
@@ -392,7 +410,7 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	mydidata = actualinode.idata;
 	return 0;
 }
-*/
+
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
 int __get_inode(dimap dimap, dinode * dinode, int inoden, imap * retimap) {
