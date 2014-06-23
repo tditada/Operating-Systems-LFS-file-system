@@ -74,7 +74,7 @@ int testfs() {
 }
 
 void create(int drive, int size) {
-	dptr start;
+	dptr start, prev;
 
 	__drive = drive;
 	__log_size = size - sizeof(checkpoint);
@@ -108,27 +108,30 @@ void create(int drive, int size) {
 	printk("%d, %s\n", __get_fst_dir("/d1/d2/d3/f1", dir), dir);
 	printk("%d, %s\n", __get_fst_dir("d1/d2/d3/f1", dir), dir);
 */
-	printk("__get_cr_entry...");
-	cr_entry crep;
-	printk("%d\n", __get_cr_entry("/", &crep));
-	__print_cr_entry(&crep);
-
-}
-
-void init() {
-	dptr prev;
-	printk("Starting FS...\n");
-	__log_buf_size = 0;
-	__cp = __load_checkpoint(__new_dptr(0, 0));
-	__print_checkpoint(__cp);
 
 	prev = __mkdir("/");
 	__add_cr_entry("/", __inoden, prev);
 	__inoden++;
 
+	printk("__get_cr_entry...\n");
+	cr_entry crep;
+	printk("ret:%d\n", __get_cr_entry("/", &crep));
+	__print_cr_entry(&crep);
+}
+
+void init() {
+	printk("Starting FS...\n");
+	__log_buf_size = 0;
+	__cp = __load_checkpoint(__new_dptr(0, 0));
+	__print_checkpoint(__cp);
+
+
 	printk("\n");
 	printk("...Done\n");
 }
+
+/*dptr mkdir*/
+
 
 // /!\ NOT the filename!
 dptr __mkdir(char * basename) {
@@ -564,7 +567,7 @@ void __print_imap(imap * imptr) {
 }
 
 void __print_cr_entry(cr_entry * entry) {
-	printk("cr_entry:{\n\tinoden:%d,\n\tdir_name:%s,\n\tinode: ",
+	printk("cr_entry:{\n\tinoden: %d\n\tdir_name: %s\n\tmap: ",
 	 entry->inoden, entry->dir_name);
 	__print_dptr(&entry->map);
 	printk("\n}");
