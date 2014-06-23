@@ -5,7 +5,10 @@
 
 #define BUFSIZE 200
 #define NARGS 20
-#define PROMPT "MT> "
+#define PROMPT "sOS> "
+
+static char * pwd="/";
+int cd(int argc, char *argv[]);
 
 static struct cmdentry
 {
@@ -24,7 +27,8 @@ cmdtab[] =
 	{	"camino_ns",	camino_ns_main },
 	{	"prodcons",		prodcons_main },
 	{	"divz",			divz_main },
-	{	"testfs",		testfs }
+	{	"testfs",		testfs },
+	{   "cd",			cd}
 };
 
 int
@@ -89,5 +93,28 @@ shell_main(int argc, char **argv)
 
 		if ( !found )
 			cprintk(LIGHTRED, BLACK, "Comando %s desconocido\n", args[0]);
+	}
+}
+
+int cd(int argc, char *argv[]){
+	//La tabla del CR en RAM siempre está actualizada !!!!
+	//uso bool __search_cr(char * dir) de fs.c
+	//dir la dirección que no sé como pasar.
+	char * dir=argv[1];
+	// cprintk(LIGHTRED, BLACK, "Param: %s\n", dir);
+	if(argc!=2){
+		cprintk(LIGHTRED, BLACK, "Necesita solo %d parametros", 1);
+		return -1;
+	}
+	if(__search_cr(dir)){
+		if(dir[0]=='/'){
+			//Direccion absoluta
+			pwd=dir;
+		}else{
+			strcpy(pwd, dir);
+		}
+		return 0;
+	} else{
+		return -1;
 	}
 }
