@@ -26,7 +26,7 @@ static lnode * __new_lnode(lntype type, void * data, dptr next);
 #define __SET(dest, src, size) memcpy(&(dest), &(src), size)
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
 static bool __is_null(dptr addr);
-static void __append(void * data, int bytes);
+static void __append_to_buf(void * data, int bytes);
 static void __stage(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
@@ -209,7 +209,6 @@ void __add_cr_entry(const char * dirname, int inoden, dimap map) {
 // Ahora modifico el imap que estaba apuntando a ese inodo
 // Deberia quedar en BUFFER: fdata (nuevo), inodo modificado e imapa modificado.
 // Despues se ocupara de bajar a disco otra parte 
-/*
 int append(char * dir, void * txt) { //TERE
 	imap * mypimap;
 	inode * mypinode;
@@ -364,7 +363,7 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	mydidata = actualinode.idata;
 	return 0;
 }
-*/
+
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
 int __get_inode(dimap * dimptr, int inoden, dinode * retdinode, imap * retimap) {
@@ -372,12 +371,6 @@ int __get_inode(dimap * dimptr, int inoden, dinode * retdinode, imap * retimap) 
 	imap * pimap = __load_imap(*dimptr);
 	imap_entry * curr;
 
-/*	printk("\n<__get_inode:\ndimptr:");
-	__print_dptr(dimptr);
-	printk("\npimap:");
-	__print_imap(pimap);
-	printk("\n>\n");
-*/
 	for (i=0; i<MAX_INODES; i++) {
 		curr = &(pimap->map[i]);
 		if (curr->inoden == inoden) {
@@ -511,11 +504,11 @@ lnode * __load_lnode(dptr addr) {
 
 void __stage(lntype type, void * data) {
 	dptr new_end = __dptr_add(__cp->lend, __sizeof_lntype(type));
-	__append(__new_lnode(type, data, new_end), __sizeof_lntype(type));
+	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
 }
 
-void __append(void * data, int bytes) {
+void __append_to_buf(void * data, int bytes) {
 	memcpy(__log_buf+__log_buf_size, data, bytes);
 	__log_buf_size += bytes;
 }
