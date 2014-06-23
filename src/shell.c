@@ -8,6 +8,7 @@
 #define PROMPT "sOS> "
 
 static pwd='/';
+int cd(int argc, char *argv[]);
 
 static struct cmdentry
 {
@@ -95,11 +96,11 @@ shell_main(int argc, char **argv)
 	}
 }
 
-
-
 int cd(int argc, char *argv[]){
 	//La tabla del CR en RAM siempre está actualizada !!!!
 	//uso bool __search_cr(char * dir) de fs.c
+	//dir la dirección que no sé como pasar.
+	char * dir=argv[1];
 	if(__search_cr(dir)){
 		if(dir[0]=='/'){
 			//Direccion absoluta
