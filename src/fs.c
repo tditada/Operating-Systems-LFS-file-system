@@ -26,8 +26,8 @@ static lnode * __new_lnode(lntype type, void * data, dptr next);
 #define __SET(dest, src, size) memcpy(&(dest), &(src), size)
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
 static bool __is_null(dptr addr);
-static void __log_buf_append(void * data, int bytes);
-static void __lnode_append(lntype type, void * data);
+static void __stage(void * data, int bytes);
+static void __append(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
 //debugging
@@ -37,11 +37,14 @@ static void __print_imap(imap * imap);
 static void __print_inode(inode * inode);
 static void __print_ddata(ddata * ddata);
 static void __print_fdata(fdata * fdata);
+static void __print_lnode(lnode * lnode);
 static char * __lntype_to_str(lntype type);
 static char * __ftype_to_str(ftype type);
-static void __lnode_print(lnode * lnode);
+//lookups
+static int __get_fst_dir(char * filename, char * dir);
 //main
 static void __mkdir(char * basename);
+
 
 
 //vars
@@ -97,6 +100,10 @@ void create(int drive, int size){
 	__cp = __load_checkpoint(__new_dptr(0,0));
 	__print_checkpoint(__cp);
 	printk("...Done\n");
+
+	char * dir;
+/*	printk("%d, %s\n", __get_fst_dir("/d1/d2/d3/f1", dir), dir);
+	printk("%d, %s\n", __get_fst_dir("d1/d2/d3/f1", dir), dir);*/
 }
 
 void init() {
@@ -115,17 +122,17 @@ void __mkdir(char * basename) {
 	imap imap;
 
 	dptr prev = __cp->lend;
-	__lnode_append(FS_DDATA, &data);
+	__append(FS_DDATA, &data);
 
 	inode.num = __inoden++;
 	inode.type = FS_DIR;
 	__set_dptr(inode.idata[0], prev);
 	prev = __cp->lend;
-	__lnode_append(FS_INODE, &inode);
+	__append(FS_INODE, &inode);
 
 	imap.map[0].inoden = inode.num;
 	__set_dptr(imap.map[0].inode, prev);
-	__lnode_append(FS_IMAP, &imap);
+	__append(FS_IMAP, &imap);
 
 	__print_ddata(&data);
 	printk("\n");
@@ -162,6 +169,7 @@ int append(char * dir, void * txt) { //TERE
 	}
 	
 }
+
 
 // borra archivo o directorio (con todo lo que tenga adentro)
 int remove(char * dir) {
@@ -366,7 +374,7 @@ int __get_cr_imap_n_inoden(char * filename, dimap mydimap, int myinoden) {
 		}
 	}
 	return read;
-}
+}*/
 
 // Gets the first director copying everything before /
 // Returns number of chars read
@@ -375,17 +383,10 @@ int __get_fst_dir(char * filename, char * dir) {
 	while (filename[i-1] != '\0' && filename[i-1] != '/') {
 		i++;
 	}
-	if(i==1 && strlen(filename)!=0){
-		filename='/';
-	}
-
-	dir = malloc(sizeof(char) * (i+1));
-	sprintf(dir, "%.*s", i, filename);
-
+	memcpy(dir, filename, i);
+	dir[i]='\0';
 	return i;
 }
-
-*/
 
 lnode * __next_lnode_buf(int * i) {
 	if (*i >= __log_buf_size) {
@@ -468,13 +469,13 @@ lnode * __load_lnode(dptr addr) {
 	return data;
 }
 
-void __lnode_append(lntype type, void * data) {
+void __append(lntype type, void * data) {
 	dptr new_end = __dptr_add(__cp->lend, __sizeof_lntype(type));
-	__log_buf_append(__new_lnode(type, data, new_end), __sizeof_lntype(type));
+	__stage(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
 }
 
-void __log_buf_append(void * data, int bytes) {
+void __stage(void * data, int bytes) {
 	memcpy(__log_buf+__log_buf_size, data, bytes);
 	__log_buf_size += bytes;
 }
@@ -580,7 +581,7 @@ void __print_fdata(fdata * fdptr) {
 	printk("fdata:{\n\t%s\n}", fdptr->data);
 }
 
-void __lnode_print(lnode * lnptr) {
+void __print_lnode(lnode * lnptr) {
 	printk("lnode:{\n");
 	printk("\ttype: %s\n", __lntype_to_str(lnptr->type));
 	printk("\tnext: ");
