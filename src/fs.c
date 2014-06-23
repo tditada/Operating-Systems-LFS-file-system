@@ -147,10 +147,34 @@ int append(char * dir, void * txt) { //TERE
 	imap * mypimap;
 	inode * mypinode;
 	void * myidata;
+	int inodedir;
 
 	//Agarro el inodo y le agrego otro segmento de datos
 	if(__get_last(dir,mypimap, mypinode, myidata)==-1){
 		return -1;
+	}
+
+	//Recorro el inodo mypinode
+	for(i=0;i<=MAX_INODES;i++){
+		didata myddata = mypinode->idata[i];
+		if(__is_null(myddata)){
+			//EL PRIMERO QUE ES NULL, CREO UNA NUEVA FDATA CON EL TXT		
+			fdata * mynewpfdata;
+			mynewpfdata->data=txt;
+			dptr prev = __cp->ledn; //Direccion en la que esta
+			__lnode_append(FS_FDATA,mynewpfdata);
+			__set_dptr(mypinode->idata[i], prev);
+			//EN EL INODO TENGO QUE CAMBIAR EL DATO Y APENDEARLO DE NUEVO
+			inodedir=prev+sizeof(*mynewpfdata);
+			__lnode_append(FS_INODE,mypinode);
+			//TENGO QUE CAMBIAR EL CACHO DE IMAPA QUE APUNTABA AL INODO QUE APPENDEE			
+			//COMO LO TENGO SUBIDO A MEMORIA PUEDO RECORRERLO TRANQUILAMENTE
+			for(j=0;j<=MAX_IMAP;j++){
+				if((mydimap->map[j]).inoden==pinode->num){	
+					//RECORRO EL CR
+				}
+			}
+		}
 	}
 	
 }
@@ -200,7 +224,7 @@ bool __is_inode_dir(inode * myinode) {
 }
 
 bool __is_inode_file(inode * myinode) {
-	if(myinode->type)==FS_FILE){
+	if((myinode->type)==FS_FILE){
 		return true; 
 	} return false;
 }
@@ -221,7 +245,9 @@ int __get_inode_from_directory(dinode myinode, char * name){
 	}
 }
 
-int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydidata) {
+
+//CUANDO CONSIGO EL INODO EN EL CR PARA USAR EL IMAP
+int __get_last(char * filename, imap * lastpimap, inode * lastpinode, void * mydidata) {
 
 	dimap mydimap;
 	dinode mydinode;
@@ -271,11 +297,11 @@ int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydid
 						if(actual_imap_entry.inoden == myinoden){
 							//LO ENCONTREEEEEEEEEEEE
 							//SUBO LA DATA Y EL INODO
-							lastimap=mypimap; //GUARDO EL imapa 
+							lastpimap=mypimap; //GUARDO EL imapa 
 							__get_inode_from_imap(mydimap,mydinode,myinoden,mypimap);
 							__get_data_from_inode(mydinode,mypinode,mytype,mydidata);
-							lastinode=mypinode;
-							myidata = __load_fdata(mydidata);
+							lastpinode=mypinode;
+							mypidata = __load_fdata(mydidata);
 							return 0;
 						}
 					}
@@ -288,9 +314,9 @@ int __get_last(char * filename, dimap lastdimap, dinode lastdinode, void * mydid
 		}
 
 	} 
-	lastimap=mypimap;
-	lastinode=mypinode;
-	myidata=__load_ddata(mydidata); //SI HUBIERA SIDO UN FILE ENTRABA EN EL CASO ANTES
+	lastpimap=mypimap;
+	lastpinode=mypinode;
+	mypidata=__load_ddata(mydidata); //SI HUBIERA SIDO UN FILE ENTRABA EN EL CASO ANTES
 	return 0; //CUANDO FALLA?????
 }
 
@@ -367,10 +393,7 @@ int __get_fst_dir(char * filename, char * dir) {
 	while (filename[i-1] != '\0' && filename[i-1] != '/') {
 		i++;
 	}
-	if(i==1 && strlen(filename)!=0){
-		filename='/';
-	}
-
+	
 	dir = malloc(sizeof(char) * (i+1));
 	sprintf(dir, "%.*s", i, filename);
 
