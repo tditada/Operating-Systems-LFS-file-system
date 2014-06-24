@@ -84,7 +84,7 @@ typedef struct {
 
 // Hacemos el CR en RAM
 // reservar buffer en RAM
-// mkdir de /
+// mkfile de /
 void init();
 void create(int drive, int size);
 int testfs();
@@ -94,7 +94,8 @@ int sync_lbuf();
 int mkdir(char * filename);
 int fs_cat(char * dir);
 int fs_list(char * dir);
+int mkfile(char * filename, ftype type, void * data, int bytes);
 
-/*int fs_mkdir(char * path);*/
+/*int fs_mkfile(char * path);*/
 
 #endif

@@ -26,6 +26,7 @@ static lnode * __new_lnode(lntype type, void * data, dptr next);
 static inode * __new_inode(int inoden, ftype type, didata idata);
 static imap * __new_imap(int inoden, dinode inode);
 static ddata * __new_ddata();
+static fdata * __new_fdata(void * data, int bytes);
 //utils
 #define __SET(dest, src, size) memcpy(&(dest), &(src), size)
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
@@ -34,6 +35,8 @@ static void __append_to_buf(void * data, int bytes);
 static dptr __stage(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
+static void __put_null(dptr * addr);
+static bool __is_null_dptr(dptr addr);
 //debugging
 static void __print_checkpoint(checkpoint * cp);
 static void __print_dptr(dptr * addr);
@@ -47,14 +50,17 @@ static char * __lntype_to_str(lntype type);
 static char * __ftype_to_str(ftype type);
 //lookups
 static int __get_fst_dirname(char * filename, char * dir);
-/*static int __get_cr_entry(char * filename, cr_entry * crep);*/
-
-//main
-static void __mkdir(int inoden, char * basename);
-
+static void * __get_last_data(char * dir, ftype * type);
 static int __get_inoden(char * filename);
 static inode * __get_inode(imap * pimap, int inoden);
 static imap * __get_imap(int inoden);
+static void * __get_data(inode * inode, ftype * rettype);
+/*static int __get_cr_entry(char * filename, cr_entry * crep);*/
+
+//main
+static void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes);
+static int __list(char * dir);
+static int __remove(char * dir);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
 static int __get_max_inoden();
@@ -100,10 +106,16 @@ int sync_lbuf() {
 int testfs() {
 	create(ATA0, 1<<15);
 	//init(); //TODO:remove!
+	mkfile("/tere", FS_DIR, NULL, 0);
+	mkfile("/tere/Downloads", FS_DIR, NULL, 0);
+/*	char * text = "hola mundo!";
+	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
 
-<<<<<<< HEAD
-	sync_cr();
-	sync_lbuf();
+	__print_checkpoint(__cp);
+
+
+/*	sync_cr();
+	sync_lbuf();*/
 	
 /*	printk("Loading CR...");
 	__cp = __load_checkpoint(__new_dptr(0,0));
@@ -157,12 +169,7 @@ void create(int drive, int size) {
 	printk("...Done\n");
 
 	printk("Creating /...\n");
-	__mkdir(0, "/");
-	mkdir("/tere");
-	mkdir("/tere/Downloads");
-
-	__print_checkpoint(__cp);
-
+	__mkfile(0, "/", FS_DIR, NULL, 0);
 	printk("\n...Done\n");
 }
 
@@ -177,7 +184,7 @@ void init() {
 	printk("...Done\n");
 }
 
-int mkdir(char * filename) {
+int mkfile(char * filename, ftype type, void * data, int bytes) {
 	char pfname[MAX_PATH];
 	int pinoden;
 
@@ -187,20 +194,27 @@ int mkdir(char * filename) {
 		return -1;
 	}
 
-	__get_parent_filename(filename, pfname);
+	/*__get_parent_filename(filename, pfname);
 	printk("<filename:%s\n", filename);
-	printk("parent:%s>\n", pfname);
+	printk("parent:%s>\n", pfname);*/
 
 	if ((pinoden=__get_inoden(pfname)) == -1) { //nonexistent parent
 		printk("nonexistent parent: %s\n", pfname);
 		return -1;
 	}
 	int inoden = __get_max_inoden()+1;
-	
-	__mkdir(inoden, filename);
 
 	imap * pimap = __get_imap(pinoden);
+/*	__print_imap(pimap);*/
 	inode * pinode = __get_inode(pimap, pinoden);
+/*	__print_inode(pinode);*/
+	if (pinode->type != FS_DIR) {
+		printk("parent is not a directory!\n");
+		return -1;
+	}
+	
+	__mkfile(inoden, filename, type, data, bytes);
+
 	ddata * pddata = __load_ddata(pinode->idata);
 
 	__add_ddata_entry(pddata, inoden, filename);
@@ -213,33 +227,41 @@ int mkdir(char * filename) {
 	return 0;
 }
 
-void __mkdir(int inoden, char * filename) {
+void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
+	fdata * fdptr;
 	ddata * ddptr;
 	inode * inptr;
 	imap * imptr;
 	dptr prev;
 
-	ddptr = __new_ddata();
-	prev = __stage(FS_DDATA, ddptr);
-	
-	printk("ddata at: ");
-	__print_dptr(&prev);
-	printk("\n");
+	switch(type) {
+	case FS_DIR:
+		ddptr = __new_ddata();
+		prev = __stage(FS_DDATA, ddptr);
+/*		printk("ddata at: ");*/
+		break;
+	case FS_FILE:
+		fdptr = __new_fdata(data, bytes);
+		prev = __stage(FS_FDATA, fdptr);
+/*		printk("fdata at: ");*/
+	}	
+/*	__print_dptr(&prev);
+	printk("\n");*/
 
-	inptr = __new_inode(inoden, FS_DIR, prev);
+	inptr = __new_inode(inoden, type, prev);
 	prev = __stage(FS_INODE, inptr);
 
-	printk("inode at: ");
+/*	printk("inode at: ");
 	__print_dptr(&prev);
-	printk("\n");
+	printk("\n");*/
 
 	imptr = __new_imap(inoden, prev);
 	prev = __stage(FS_IMAP, imptr);
 
-	printk("imap at: ");
+/*	printk("imap at: ");
 	__print_dptr(&prev);
 	printk("\n");
-
+*/
 	__add_cr_entry(filename, inoden, prev);
 }
 
@@ -286,6 +308,12 @@ void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
 	//must check for the i >= MAX_IMAP elsewhere!
 }
 
+fdata * __new_fdata(void * data, int bytes) {
+	fdata * fdptr = malloc(sizeof(fdata));
+	memcpy(fdptr->data, data, bytes);
+	return fdptr;
+}
+
 ddata * __new_ddata() {
 	ddata * ddptr = malloc(sizeof(ddata));
 	return ddptr;
@@ -327,8 +355,8 @@ int fs_cat(char * dir){
 	if(type==FS_DIR){
 		return ERROR;
 	}else{
-		fdata _fdata=(fdata) data;
-		printk(fdata.data);
+		fdata * _fdata=(fdata *) data;
+		printk(_fdata->data);
 		printk("\n");
 		return OK;
 	}
@@ -341,9 +369,9 @@ int fs_list(char * dir){
 	if(type==FS_FILE){
 		return ERROR;
 	}else{
-		ddata * _ddata=(ddata *) data;
+		ddata * _ddata=(ddata *)data;
 		for(i=0;i<=MAX_DIR_FILES;i++){
-			printk((_ddata->map)[i].name);
+			printk(((_ddata->map)[i]).name);
 			printk("\n");
 		}
 		return OK;
@@ -364,25 +392,25 @@ int __remove(char * dir) {
 	cr_entry * _map=__cp->map;
 	for(i=0;i<=MAX_IMAP;i++){
 		cr_entry current=_map[i];
-		if(strcmp(current.dir_name,dir)){
-			__put_null(current.map);
+		if(strcmp(current.filename,dir)){
+			__put_null(&current.map);
 			return OK;
 		}		
 	}
 	return ERROR;
 }
 
-bool __is_inode_dir(inode * myinode) {
-	if (myinode->type)==FS_DIR) {
-		return true; 
-	} return false;
-}
+// bool __is_inode_dir(inode * myinode) {
+// 	if (myinode->type)==FS_DIR) {
+// 		return true; 
+// 	} return false;
+// }
 
-bool __is_inode_file(inode * myinode) {
-	if (myinode->type)==FS_FILE) {
-		return true; 
-	} return false;
-}
+// bool __is_inode_file(inode * myinode) {
+// 	if (myinode->type)==FS_FILE) {
+// 		return true; 
+// 	} return false;
+// }
 
 //For SHELL use (cd command). Given a direction, searchs for it in the cr
 bool file_existence(char * dir){
@@ -401,7 +429,8 @@ int __get_inoden(char * filename){
 	cr_entry * curr;
 	for(i=0; i<=MAX_IMAP; i++){
 		curr = &(__cp->map[i]);
-		if (streq(curr->filename, filename)) {
+		if (curr->inoden != -1 && streq(curr->filename, filename)) {
+			/*__print_cr_entry(curr);*/
 			return curr->inoden;
 		}
 	}
@@ -414,6 +443,7 @@ imap * __get_imap(int inoden) {
 	for(i=0; i<=MAX_IMAP; i++){
 		curr = &(__cp->map[i]);
 		if (inoden == curr->inoden) {
+			/*__print_cr_entry(curr);*/
 			return __load_imap(curr->map);
 		}
 	}
@@ -445,7 +475,7 @@ void * __get_data(inode * inode, ftype * rettype){
 }
 
 //Pasamos el dato del directorio padre
-int __get_inoden_child(ddata * data, char * name){
+int __get_inoden_child(ddata * data, char * name) {
 	int i;
 	ddata_entry * map=data->map;
 	ddata_entry current;
