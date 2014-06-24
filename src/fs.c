@@ -766,7 +766,7 @@ void __print_lnode(lnode * lnptr) {
 	printk("lnode:{\n");
 	printk("\ttype: %s\n", __lntype_to_str(lnptr->type));
 	printk("\tnext: ");
-	__print_dptr(&lnptr->next);
+	__print_dptr(&(lnptr->next));
 	printk("\n\tdata:{\n\t\t");
 	switch(lnptr->type) {
 	case FS_IMAP:
