@@ -92,6 +92,8 @@ bool file_existence(char * dir);
 int sync_cr();
 int sync_lbuf();
 int mkdir(char * filename);
+int fs_cat(char * dir);
+int fs_list(char * dir);
 
 /*int fs_mkdir(char * path);*/
 

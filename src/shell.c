@@ -14,7 +14,8 @@ static struct cmdentry
 {
 	char *name;
 	int (*func)(int argc, char **argv);
-}
+};
+
 cmdtab[] =
 {
 	{	"setkb",		setkb_main },
@@ -30,7 +31,9 @@ cmdtab[] =
 	{	"testfs",		testfs },
 	{	"sync_cr",		sync_cr},
 	{	"sync_lbuf",	sync_lbuf},
-	{	"cd",			cd}
+	{	"cd",			cd},
+	{	"cat",			cat},
+	{	"list",			list}
 };
 
 int
@@ -113,10 +116,22 @@ int cd(int argc, char *argv[]){
 			//Direccion absoluta
 			pwd=dir;
 		}else{
-			strcpy(pwd, dir);
+			char * newdir;
+			strcat(newdir,pwd);
+			strcat(newdir,"/");
+			strcat(newdir,dir);
+			strcpy(pwd,newdir);
 		}
 		return 0;
 	} else{
 		return -1;
 	}
+}
+
+int cat(int argc, char *argv[]){
+	return fs_cat(argv[1]);
+}
+
+int list(int argc, char *argv[]){
+	return fs_list(argv[1]);
 }

@@ -320,7 +320,7 @@ imap * __new_imap(int inoden, dinode inode) {
 	// mismo que mkdir pero para archivos
 }*/
 
-int __cat(char * dir){
+int fs_cat(char * dir){
 	ftype type;
 	int i;
 	void * data=__get_last_data(dir, &type);
@@ -334,7 +334,7 @@ int __cat(char * dir){
 	}
 }
 
-int __list(char * dir){
+int fs_list(char * dir){
 	ftype type;
 	int i;
 	void * data=__get_last_data(dir, &type);
