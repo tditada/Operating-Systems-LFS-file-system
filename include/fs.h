@@ -91,7 +91,7 @@ int testfs();
 bool __search_cr(char * dir);
 int sync_cr();
 int sync_lbuf();
-int mkdir();
+int mkdir(char * filename);
 
 /*int fs_mkdir(char * path);*/
 

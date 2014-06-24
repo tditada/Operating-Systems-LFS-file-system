@@ -47,16 +47,18 @@ static char * __ftype_to_str(ftype type);
 //lookups
 static int __get_fst_dirname(char * filename, char * dir);
 static int __get_cr_entry(char * filename, cr_entry * crep);
-static int __get_inode(dimap * dimap, int inoden, dinode * retdinode, imap * retimap);
-
-static int __get_inoden(char * filename);
-static imap * __get_imap(int inoden);
 
 //main
 static void __mkdir(int inoden, char * basename);
 
+static int __get_inoden(char * filename);
+static inode * __get_inode(imap * pimap, int inoden);
+static imap * __get_imap(int inoden);
+
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
 static int __get_max_inoden();
+static int __get_parent_filename(char * filename, char * pfname);
+static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 static int __get_parent_filename(char * filename, char * pfname);
 
 //vars
@@ -126,9 +128,12 @@ int testfs() {
 */	//__print_inode(__load_inode(dinode));
 	//__print_imap(&imap);
 
-	char pfname[MAX_PATH];
+	/*char pfname[MAX_PATH];
 	__get_parent_filename("/tere/Downloads/sarasa/file", pfname);
-	printk("%s\n", pfname);
+	printk("%s\n", pfname);*/
+
+/*	printk("%d\n", mkdir("/pepe"));
+	__print_checkpoint(__cp);*/
 
 	printk("Chau!\n");
 	return 0;
@@ -162,6 +167,9 @@ void create(int drive, int size) {
 	__get_cr_entry("pepe", &crep);
 	__print_cr_entry(&crep);
 */
+	printk("\n");
+	printk("%d\n", mkdir("/pepe"));
+	__print_checkpoint(__cp);
 
 	printk("\n...Done\n");
 }
@@ -179,31 +187,36 @@ void init() {
 
 int mkdir(char * filename) {
 	char pfname[MAX_PATH];
-	int pinn;
+	int pinoden;
 
 	//TODO: mkdir deberia fijarse si el directorio es hijo de alguien y modificar a ese alguien!
 	if (__get_inoden(filename) != -1) { //file exists
+		printk("file exists\n");
 		return -1;
 	}
 
 	__get_parent_filename(filename, pfname);
-	if ((pinn=__get_inoden(pfname)) != -1) { //nonexistent parent
+	printk("parent:%s\n", pfname);
+	if ((pinoden=__get_inoden(pfname)) != -1) { //nonexistent parent
+		printk("nonexistent parent\n");
 		return -1;
 	}
+	int inoden = __get_max_inoden()+1;
+	
+	__mkdir(inoden, filename);
 
-	__mkdir(__get_max_inoden()+1, filename);
-	__get_inode(pinn);
+	imap * pimap = __get_imap(pinoden);
+	inode * pinode = __get_inode(pimap, pinoden);
+	ddata * pddata = __load_ddata(pinode->idata);
+
+	__add_ddata_entry(pddata, inoden, filename);
+	dptr prev = __stage(FS_DDATA, pddata);
+
+	__set_dptr(pinode->idata, prev);
+	prev = __stage(FS_INODE, pinode);
+
+	__set_dptr(pimap->map[0].inode, prev);
 	return 0;
-}
-
-int __get_parent_filename(char * filename, char * pfname) {
-	int i = strlen(filename)-1;
-	while (i > 0 && filename[i] != '/') {
-		i--;
-	}
-	memcpy(pfname, filename, i);
-	pfname[i]='\0';
-	return i;
 }
 
 void __mkdir(int inoden, char * filename) {
@@ -234,6 +247,34 @@ void __mkdir(int inoden, char * filename) {
 	printk("\n");
 
 	__add_cr_entry(filename, inoden, prev);
+}
+
+void __add_ddata_entry(ddata * ddatap, int inoden, char * filename) {
+	int i;
+	for (i=0; i<MAX_DIR_FILES; i++) {
+		if (ddatap->map[i].inoden <= 0) { // isn't set
+			ddatap->map[i].inoden = inoden;
+			strcpy(ddatap->map[i].name, filename);
+		}
+	}
+}
+
+int __get_parent_filename(char * filename, char * pfname) {
+	int i, last = -1;
+	for (i=0; filename[i]!='\0'; i++) {
+		if (filename[i] == '/') {
+			last = i;
+		}
+	}
+	if (last == -1) {
+		return -1;
+	} else if (last == 0) {
+		strncpy(pfname, filename, 1);
+		return 1;
+	} else {
+		strncpy(pfname, filename, last);
+		return last;
+	}
 }
 
 void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
@@ -534,25 +575,43 @@ imap * __get_imap(int inoden) {
 	return NULL;
 }
 
-//Having the inode number and the piece of the imap, searchs for the inode
-//If there is an error, it returns -1.
-int __get_inode(dimap * dimptr, int inoden, dinode * retdinode, imap * retimap) {
+inode * __get_inode(imap * pimap, int inoden) {
 	int i;
-	imap * pimap = __load_imap(*dimptr);
 	imap_entry * curr;
-
 	for (i=0; i<MAX_INODES; i++) {
 		curr = &(pimap->map[i]);
 		if (curr->inoden == inoden) {
-			//No sube el inode a disco porque todavía no lo uso
-			*retdinode = curr->inode;
-			*retimap = *pimap;
-			return curr->inoden;
+			return __load_inode(curr->inode);
+		}
+	}
+	return NULL;
+}
+
+//Uso: hay que volver a castear data con el type de retorno al recibir.
+void * __get_data(inode * inode, ftype * rettype){
+	void * data;
+	if(inode->type==FS_FILE){
+		data=__load_fdata(inode->idata);
+	}else{
+		data=__load_ddata(inode->idata);
+	}
+	*rettype=inode->type;
+	return data;
+}
+
+//Pasamos el dato del directorio padre
+int __get_inoden_child(ddata * data, char * name){
+	int i;
+	ddata_entry * map=data->map;
+	ddata_entry current;
+	for(i=0; i<=MAX_DIR_FILES;i++){
+		current=map[i];
+		if(strcmp(current.name,name)){
+			return current.inoden;
 		}
 	}
 	return -1;
 }
-
 //TODO: . y .. !!
 // Busca el primer imap desde el CR (sea file o sea directory. Arreglate vos)
 // La idea sería obtener el imap del primer directorio para ir mapeando desde ahí
