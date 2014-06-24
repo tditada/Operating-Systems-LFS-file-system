@@ -427,9 +427,10 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 }*/
 
 int _get_inoden(char * dir){
-	cr_entry_map _map;
+	int i;
+	cr_entry * _map=__cp->map;
 	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i]
+		cr_entry actual=_map[i];
 		if(strcmp(actual.dir_name,dir)){
 			return actual.inoden;
 		}		
@@ -439,12 +440,13 @@ int _get_inoden(char * dir){
 
 
 imap * _get_imap(int _inoden){
-	cr_entry_map _map;
+	cr_entry * _map=__cp->map;
 	imap * ret;
+	int i;
 	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i]
+		cr_entry actual=_map[i];
 		if(_inoden==actual.inoden){
-			*ret=*__load_imap(actual.map)
+			*ret=*__load_imap(actual.map);
 			return ret;
 		}		
 	}
