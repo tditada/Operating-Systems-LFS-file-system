@@ -26,7 +26,7 @@ typedef struct {
 } fdata;
 
 typedef struct {
-	char name[MAX_FILENAME];
+	char name[MAX_PATH];
 	int inoden;
 } ddata_entry;
 
@@ -61,7 +61,7 @@ typedef struct {
 typedef dptr dimap;
 
 typedef struct {
-	char dir_name[MAX_FILENAME];
+	char filename[MAX_FILENAME];
 	int inoden;
 	dimap map;
 } cr_entry;
@@ -91,7 +91,7 @@ int testfs();
 bool __search_cr(char * dir);
 int sync_cr();
 int sync_lbuf();
-void mkdir();
+int mkdir(char * filename);
 
 /*int fs_mkdir(char * path);*/
 
