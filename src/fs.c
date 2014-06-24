@@ -325,6 +325,20 @@ imap * __new_imap(int inoden, dinode inode) {
 	// mismo que mkdir pero para archivos
 }*/
 
+int __cat(char * dir){
+	ftype type;
+	int i;
+	void * data=__get_last_data(dir, &type);
+	if(type==FS_DIR){
+		return ERROR;
+	}else{
+		fdata * _fdata=(fdata *) data;
+		printk(_fdata->data);
+		printk("\n");
+		return OK;
+	}
+}
+
 int __list(char * dir){
 	ftype type;
 	int i;
@@ -332,8 +346,8 @@ int __list(char * dir){
 	if(type==FS_FILE){
 		return ERROR;
 	}else{
+		ddata * _ddata=(ddata *)data;
 		for(i=0;i<=MAX_DIR_FILES;i++){
-			ddata * _ddata=(ddata *)data;
 			printk(((_ddata->map)[i]).name);
 			printk("\n");
 		}
@@ -376,7 +390,7 @@ int __remove(char * dir) {
 // }
 
 //For SHELL use (cd command). Given a direction, searchs for it in the cr
-bool __search_cr(char * dir){
+bool file_existence(char * dir){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
 		if(strcmp((__cp->map)[i].filename, dir)){
