@@ -108,7 +108,7 @@ int cd(int argc, char *argv[]){
 		cprintk(LIGHTRED, BLACK, "Necesita solo %d parametros", 1);
 		return -1;
 	}
-	if(__search_cr(dir)){
+	if(file_existence(dir)){
 		if(dir[0]=='/'){
 			//Direccion absoluta
 			pwd=dir;

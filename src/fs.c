@@ -35,6 +35,8 @@ static void __append_to_buf(void * data, int bytes);
 static dptr __stage(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
+static void __put_null(dptr * addr);
+static bool __is_null_dptr(dptr addr);
 //debugging
 static void __print_checkpoint(checkpoint * cp);
 static void __print_dptr(dptr * addr);
@@ -48,14 +50,17 @@ static char * __lntype_to_str(lntype type);
 static char * __ftype_to_str(ftype type);
 //lookups
 static int __get_fst_dirname(char * filename, char * dir);
+static void * __get_last_data(char * dir, ftype * type);
+static int __get_inoden(char * filename);
+static inode * __get_inode(imap * pimap, int inoden);
+static imap * __get_imap(int inoden);
+static void * __get_data(inode * inode, ftype * rettype);
 /*static int __get_cr_entry(char * filename, cr_entry * crep);*/
 
 //main
 static void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes);
-
-static int __get_inoden(char * filename);
-static inode * __get_inode(imap * pimap, int inoden);
-static imap * __get_imap(int inoden);
+static int __list(char * dir);
+static int __remove(char * dir);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
 static int __get_max_inoden();
@@ -109,9 +114,8 @@ int testfs() {
 	__print_checkpoint(__cp);
 
 
-<<<<<<< HEAD
-	sync_cr();
-	sync_lbuf();
+/*	sync_cr();
+	sync_lbuf();*/
 	
 /*	printk("Loading CR...");
 	__cp = __load_checkpoint(__new_dptr(0,0));
@@ -344,6 +348,20 @@ imap * __new_imap(int inoden, dinode inode) {
 	// mismo que mkdir pero para archivos
 }*/
 
+int __cat(char * dir){
+	ftype type;
+	int i;
+	void * data=__get_last_data(dir, &type);
+	if(type==FS_DIR){
+		return ERROR;
+	}else{
+		fdata * _fdata=(fdata *) data;
+		printk(_fdata->data);
+		printk("\n");
+		return OK;
+	}
+}
+
 int __list(char * dir){
 	ftype type;
 	int i;
@@ -351,9 +369,10 @@ int __list(char * dir){
 	if(type==FS_FILE){
 		return ERROR;
 	}else{
-		ddata _ddata=(ddata) data;
+		ddata * _ddata=(ddata *)data;
 		for(i=0;i<=MAX_DIR_FILES;i++){
-			printk(_ddata[i].name+"\n");
+			printk(((_ddata->map)[i]).name);
+			printk("\n");
 		}
 		return OK;
 	}
@@ -373,28 +392,28 @@ int __remove(char * dir) {
 	cr_entry * _map=__cp->map;
 	for(i=0;i<=MAX_IMAP;i++){
 		cr_entry current=_map[i];
-		if(strcmp(current.dir_name,dir)){
-			__put_null(current.map);
+		if(strcmp(current.filename,dir)){
+			__put_null(&current.map);
 			return OK;
 		}		
 	}
 	return ERROR;
 }
 
-bool __is_inode_dir(inode * myinode) {
-	if (myinode->type)==FS_DIR) {
-		return true; 
-	} return false;
-}
+// bool __is_inode_dir(inode * myinode) {
+// 	if (myinode->type)==FS_DIR) {
+// 		return true; 
+// 	} return false;
+// }
 
-bool __is_inode_file(inode * myinode) {
-	if (myinode->type)==FS_FILE) {
-		return true; 
-	} return false;
-}
+// bool __is_inode_file(inode * myinode) {
+// 	if (myinode->type)==FS_FILE) {
+// 		return true; 
+// 	} return false;
+// }
 
 //For SHELL use (cd command). Given a direction, searchs for it in the cr
-bool __search_cr(char * dir){
+bool file_existence(char * dir){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
 		if(strcmp((__cp->map)[i].filename, dir)){
