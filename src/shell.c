@@ -7,7 +7,7 @@
 #define NARGS 20
 #define PROMPT "sOS> "
 
-static pwd='/';
+static char * pwd="/";
 int cd(int argc, char *argv[]);
 
 static struct cmdentry
@@ -101,14 +101,19 @@ int cd(int argc, char *argv[]){
 	//uso bool __search_cr(char * dir) de fs.c
 	//dir la dirección que no sé como pasar.
 	char * dir=argv[1];
+	// cprintk(LIGHTRED, BLACK, "Param: %s\n", dir);
+	if(argc!=2){
+		cprintk(LIGHTRED, BLACK, "Necesita solo %d parametros", 1);
+		return -1;
+	}
 	if(__search_cr(dir)){
 		if(dir[0]=='/'){
 			//Direccion absoluta
 			pwd=dir;
 		}else{
-			pwd=pwd+dir;
+			strcpy(pwd, dir);
 		}
-		return 1;
+		return 0;
 	} else{
 		return -1;
 	}
