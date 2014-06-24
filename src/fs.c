@@ -67,7 +67,7 @@ static lnode * __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
 
 /*TODO: static char * pwd;*/
 
-int __get_inoden() {
+int __get_max_inoden() {
 	int i, inoden = 0;
 	for (i=0; i<MAX_IMAP; i++) {
 		inoden = max(__cp->map[i].inoden, inoden);
@@ -529,8 +529,8 @@ int __get_inoden_child(ddata * data, char * name){
 	ddata_entry current;
 	for(i=0; i<=MAX_DIR_FILES;i++){
 		current=map[i];
-		if(strcmp(current->name,name)){
-			return current->inoden;
+		if(strcmp(current.name,name)){
+			return current.inoden;
 		}
 	}
 	return -1;
