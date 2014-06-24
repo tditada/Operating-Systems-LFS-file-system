@@ -47,8 +47,7 @@ static char * __ftype_to_str(ftype type);
 //lookups
 static int __get_fst_dirname(char * filename, char * dir);
 static int __get_cr_entry(char * filename, cr_entry * crep);
-static int __get_inode(dimap * dimap, int inoden, dinode * retdinode, imap * retimap);
-//main
+static inode * __get_inode(imap * pimap, int inoden);
 static /*dptr*/ void __mkdir(int inoden, char * basename);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
@@ -517,6 +516,31 @@ inode * __get_inode(imap * pimap, int inoden) {
 	return NULL;
 }
 
+//Uso: hay que volver a castear data con el type de retorno al recibir.
+void * __get_data(inode * inode, ftype * rettype){
+	void * data;
+	if(inode->type==FS_FILE){
+		data=__load_fdata(inode->idata);
+	}else{
+		data=__load_ddata(inode->idata);
+	}
+	*rettype=inode->type;
+	return data;
+}
+
+//Pasamos el dato del directorio padre
+int __get_inoden_child(ddata * data, char * name){
+	int i;
+	ddata_entry * map=data->map;
+	ddata_entry current;
+	for(i=0; i<=MAX_DIR_FILES;i++){
+		current=map[i];
+		if(strcmp(current->name,name)){
+			return current->inoden;
+		}
+	}
+	return -1;
+}
 //TODO: . y .. !!
 // Busca el primer imap desde el CR (sea file o sea directory. Arreglate vos)
 // La idea sería obtener el imap del primer directorio para ir mapeando desde ahí
