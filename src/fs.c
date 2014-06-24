@@ -426,6 +426,31 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	return 0;
 }*/
 
+int _get_inoden(char * dir){
+	cr_entry_map _map;
+	for(i=0;i<=MAX_IMAP;i++){
+		cr_entry actual=_map[i]
+		if(strcmp(actual.dir_name,dir)){
+			return actual.inoden;
+		}		
+	}
+	return -1;
+}
+
+
+imap * _get_imap(int _inoden){
+	cr_entry_map _map;
+	imap * ret;
+	for(i=0;i<=MAX_IMAP;i++){
+		cr_entry actual=_map[i]
+		if(_inoden==actual.inoden){
+			*ret=*__load_imap(actual.map)
+			return ret;
+		}		
+	}
+	return NULL;
+}
+
 //Having the inode number and the piece of the imap, searchs for the inode
 //If there is an error, it returns -1.
 int __get_inode(dimap * dimptr, int inoden, dinode * retdinode, imap * retimap) {
