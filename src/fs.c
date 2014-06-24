@@ -439,7 +439,7 @@ int _get_inoden(char * dir){
 
 
 imap * _get_imap(int _inoden){
-	cr_entry_map _map;
+	cr_entry _map;
 	imap * ret;
 	for(i=0;i<=MAX_IMAP;i++){
 		cr_entry actual=_map[i]
