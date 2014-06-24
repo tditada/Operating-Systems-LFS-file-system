@@ -119,7 +119,9 @@ int testfs() {
 	__get_inode(&crep.map, 0, &dinode, &imap);
 */	//__print_inode(__load_inode(dinode));
 	//__print_imap(&imap);
-
+	char * ret;
+	__get_fst_dirname("/Tere/Downloads", ret);
+	printk(ret);
 	printk("Chau!\n");
 	return 0;
 }
