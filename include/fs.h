@@ -89,6 +89,9 @@ void init();
 void create(int drive, int size);
 int testfs();
 bool __search_cr(char * dir);
+int sync_cr();
+int sync_lbuf();
+void mkdir();
 
 /*int fs_mkdir(char * path);*/
 
