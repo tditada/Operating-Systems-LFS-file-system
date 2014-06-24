@@ -67,6 +67,9 @@ static int __get_max_inoden();
 static int __get_parent_filename(char * filename, char * pfname);
 static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 
+static int __dptr_to_int(dptr * addr);
+static dptr __int_to_dptr(int bytes);
+
 //vars
 static int __drive;
 static int __log_size;
@@ -90,33 +93,32 @@ int __get_max_inoden() {
 }
 
 int sync_cr() {
-	printk("Syncing CR...\n");
-	__sync_cr(__new_dptr(0, 0));
-	printk("...Done\n");
+/*	printk("Syncing CR...\n");*/
+	__sync_cr(__dptr_add(__new_dptr(0, 0), sizeof(checkpoint)));
+/*	printk("...Done\n");*/
 	return 0;
 }
 
 int sync_lbuf() {
-	printk("Syncing log buffer...\n");
+/*	printk("Syncing log buffer...\n");*/
 	__sync_log_buf();
-	printk("...Done\n");
+/*	printk("...Done\n");*/
 	return 0;
 }
 
 int testfs() {
-	create(ATA0, 1<<15);
+	create(ATA0, 49152);
 	//init(); //TODO:remove!
 	mkfile("/tere", FS_DIR, NULL, 0);
 	mkfile("/tere/Downloads", FS_DIR, NULL, 0);
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
-
-	__print_checkpoint(__cp);
-
-
-/*	sync_cr();
+	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
+	/*sync_cr();
 	sync_lbuf();*/
-	
+/*	__print_checkpoint(__cp);*/
+
+
 /*	printk("Loading CR...");
 	__cp = __load_checkpoint(__new_dptr(0,0));
 	__print_checkpoint(__cp);
@@ -159,9 +161,12 @@ void create(int drive, int size) {
 	__log_size = size - sizeof(checkpoint);
 
 	printk("Creating CR...\n");
-	printk("fs size (total)=%d bytes\nCR size=%d bytes\nlog size=%d bytes\n", size, sizeof(checkpoint), __log_size);
-	/*FIXME: lstart esta en 0,0 y el CR se va a guardar ahi!! 
-	(parece que la suma no anda!)*/
+/*	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
+	printk("CR size=%d bytes (approx. %d sectors)\n", sizeof(checkpoint), sizeof(checkpoint)/SECTOR_SIZE);
+	printk("log size=%d bytes (approx. %d sectors)\n", __log_size, __log_size/SECTOR_SIZE);
+	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
+	printk("BUFFER_SIZE=%d (approx.: %d sectors)\n", BUFFER_SIZE, BUFFER_SIZE/SECTOR_SIZE);
+	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);*/
 	start = __dptr_add(__new_dptr(0, 0), sizeof(checkpoint));
 	__cp = __new_checkpoint(start, start);
 	__print_checkpoint(__cp);
@@ -171,6 +176,9 @@ void create(int drive, int size) {
 	printk("Creating /...\n");
 	__mkfile(0, "/", FS_DIR, NULL, 0);
 	printk("\n...Done\n");
+
+	sync_cr();
+	sync_lbuf();
 }
 
 void init() {
@@ -188,14 +196,15 @@ int mkfile(char * filename, ftype type, void * data, int bytes) {
 	char pfname[MAX_PATH];
 	int pinoden;
 
+	printk("filename: %s\n", filename);
 	//TODO: mkdir deberia fijarse si el directorio es hijo de alguien y modificar a ese alguien!
 	if (__get_inoden(filename) != -1) { //file exists
 		printk("file exists: %s\n", filename);
 		return -1;
 	}
 
-	/*__get_parent_filename(filename, pfname);
-	printk("<filename:%s\n", filename);
+	__get_parent_filename(filename, pfname);
+	/*printk("<filename:%s\n", filename);
 	printk("parent:%s>\n", pfname);*/
 
 	if ((pinoden=__get_inoden(pfname)) == -1) { //nonexistent parent
@@ -282,10 +291,12 @@ int __get_parent_filename(char * filename, char * pfname) {
 			last = i;
 		}
 	}
+	printk("i=%d/%d, last=%d\n", i, strlen(filename), last);
 	if (last == -1) {
 		return -1;
 	} else if (last == 0) {
-		strncpy(pfname, filename, 1);
+		pfname[0]=filename[0];
+		pfname[1]='\0';
 		return 1;
 	} else {
 		strncpy(pfname, filename, last);
@@ -350,7 +361,7 @@ imap * __new_imap(int inoden, dinode inode) {
 
 int __cat(char * dir){
 	ftype type;
-	int i;
+	/*int i;*/
 	void * data=__get_last_data(dir, &type);
 	if(type==FS_DIR){
 		return ERROR;
@@ -530,17 +541,19 @@ void __sync_cr(dptr address) {
 
 void __sync_log_buf() {
 	int i, bytes;
+	printk("syncing...\n");
 	dptr write_from = __dptr_add(__cp->lend, -__log_buf_size);
 	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
 		bytes = min(__log_buf_size-(i*SECTOR_SIZE), SECTOR_SIZE);
 		__write(__log_buf+i*SECTOR_SIZE, bytes, __dptr_add(write_from, i*SECTOR_SIZE));
+		/*printk("synced: %d sectors of %d\n", i, __log_buf_size/SECTOR_SIZE);*/
 		//TODO: Ver que no se esta haciendo de manera circular el tema del lend!!!!!!
 	}
-	__set_dptr(__cp->lend, __cp->lstart);
-	for (i=0; i<__log_buf_size; i++) {
+	/*for (i=0; i<__log_buf_size; i++) {
 		__log_buf_list[i] = NULL;
-	}
+	}*/
 	__log_buf_size = 0;
+	printk("...synced\n");
 }
 
 void __write(void * data, int bytes, dptr address) {
@@ -600,13 +613,25 @@ lnode * __load_lnode(dptr addr) {
 
 dptr __stage(lntype type, void * data) {
 	dptr prev_end = __cp->lend;
-	dptr new_end = __dptr_add(__cp->lend, __sizeof_lntype(type));
+	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
+	dptr new_end = __dptr_add(__cp->lstart, ((__dptr_to_int(&__cp->lend)+__sizeof_lntype(type))%__log_size);
 	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
 	return prev_end;
 }
 
+dptr __int_to_dptr(int bytes) {
+	return __new_dptr(bytes/SECTOR_SIZE, bytes%SECTOR_SIZE);
+}
+
+int __dptr_to_int(dptr * addr) {
+	return (addr->sector)*SECTOR_SIZE + addr->offset;
+}
+
 void __append_to_buf(void * data, int bytes) {
+	if (__log_buf_size+bytes >= __log_size/*-MAX_LNODE_SIZE*/) {
+		__sync_log_buf();
+	}
 	memcpy(__log_buf+__log_buf_size, data, bytes);
 	__log_buf_size += bytes;
 }
@@ -659,7 +684,7 @@ void __print_imap(imap * imptr) {
 	printk("imap:{\n");
 	for (i=0; i<MAX_IMAP && !__is_null_dptr(imptr->map[i].inode); i++) {
 		printk("\t{ inoden:%d, inode: ", imptr->map[i].inoden);
-		__print_dptr(&imptr->map[i].inode);
+		__print_dptr(&((imptr->map[i]).inode));
 		printk("}\n");
 	}
 	printk("\n}");

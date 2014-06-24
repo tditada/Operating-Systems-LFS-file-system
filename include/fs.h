@@ -5,11 +5,11 @@
 #include "disk.h"
 
 #define DATA_BLOCK_SIZE 128
-#define MAX_INODES 512
-#define MAX_IMAP 128 // ??? shouldn't they be the same?
-#define BUFFER_SIZE 20*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
-#define MAX_DIR_FILES 36
-#define MAX_PATH 1024
+#define MAX_INODES 2
+#define MAX_IMAP 128
+#define BUFFER_SIZE 16*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
+#define MAX_DIR_FILES 8
+#define MAX_PATH 256
 #define MAX_FILENAME 64
 #define MAX_LNODE_SIZE max(sizeof(inode),\
 						max(sizeof(imap),\
