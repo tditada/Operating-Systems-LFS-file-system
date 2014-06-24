@@ -94,7 +94,7 @@ int sync_lbuf();
 int mkdir(char * filename);
 int fs_cat(char * dir);
 int fs_list(char * dir);
-int mkfile(char * filename, ftype type, void * data, int bytes);
+int fs_mkfile(char * filename, ftype type, void * data, int bytes);
 
 /*int fs_mkfile(char * path);*/
 

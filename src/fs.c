@@ -184,7 +184,7 @@ void init() {
 	printk("...Done\n");
 }
 
-int mkfile(char * filename, ftype type, void * data, int bytes) {
+int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	char pfname[MAX_PATH];
 	int pinoden;
 
@@ -241,8 +241,10 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 /*		printk("ddata at: ");*/
 		break;
 	case FS_FILE:
-		fdptr = __new_fdata(data, bytes);
-		prev = __stage(FS_FDATA, fdptr);
+		if(bytes>0){
+			fdptr = __new_fdata(data, bytes);
+			prev = __stage(FS_FDATA, fdptr);
+		}
 /*		printk("fdata at: ");*/
 	}	
 /*	__print_dptr(&prev);
