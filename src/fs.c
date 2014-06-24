@@ -478,50 +478,43 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	return 0;
 }*/
 
-int _get_inoden(char * dir){
+int __get_inoden(char * dir){
 	int i;
 	cr_entry * _map=__cp->map;
 	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i];
-		if(strcmp(actual.dir_name,dir)){
-			return actual.inoden;
+		cr_entry current=_map[i];
+		if(strcmp(current.dir_name,dir)){
+			return current.inoden;
 		}		
 	}
 	return -1;
 }
 
 
-imap * _get_imap(int _inoden){
+imap * __get_imap(int _inoden){
 	cr_entry * _map=__cp->map;
 	imap * ret;
 	int i;
 	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i];
-		if(_inoden==actual.inoden){
-			*ret=*__load_imap(actual.map);
+		cr_entry current=_map[i];
+		if(_inoden==current.inoden){
+			*ret=*__load_imap(current.map);
 			return ret;
 		}		
 	}
 	return NULL;
 }
 
-//Having the inode number and the piece of the imap, searchs for the inode
-//If there is an error, it returns -1.
-int __get_inode(dimap * dimptr, int inoden, dinode * retdinode, imap * retimap) {
+inode * __get_inode(imap * pimap, int inoden) {
 	int i;
-	imap * pimap = __load_imap(*dimptr);
 	imap_entry * curr;
-
 	for (i=0; i<MAX_INODES; i++) {
 		curr = &(pimap->map[i]);
 		if (curr->inoden == inoden) {
-			//No sube el inode a disco porque todavía no lo uso
-			*retdinode = curr->inode;
-			*retimap = *pimap;
-			return curr->inoden;
+			return __load_inode(curr->inode);
 		}
 	}
-	return -1;
+	return NULL;
 }
 
 //TODO: . y .. !!
