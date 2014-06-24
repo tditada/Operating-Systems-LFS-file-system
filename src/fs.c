@@ -157,7 +157,7 @@ dptr __mkdir(char * basename) {
 
 	inode.num = __inoden;
 	inode.type = FS_DIR;
-	__set_dptr(inode.idata[0], prev);
+	__set_dptr(inode.idata, prev);
 	prev = __cp->lend;
 	__stage(FS_INODE, &inode);
 
@@ -637,9 +637,9 @@ void __print_inode(inode * inptr) {
 	printk("\ttype: %s\n", __ftype_to_str(inptr->type));
 	printk("\tfsize: %d\n", inptr->fsize);
 	printk("\tidata:{\n");
-	for (i=0; i<MAX_IDATA && !__is_null(inptr->idata[i]); i++) {
+	if (!__is_null(inptr->idata)) {
 		printk("\t\t");
-		__print_dptr(&(inptr->idata[i]));
+		__print_dptr(&(inptr->idata));
 		printk("\n");
 	}
 	printk("\t}\n}");

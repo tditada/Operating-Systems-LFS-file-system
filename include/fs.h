@@ -5,7 +5,6 @@
 #include "disk.h"
 
 #define DATA_BLOCK_SIZE 128
-#define MAX_IDATA 10 // Unix default
 #define MAX_INODES 512
 #define MAX_IMAP 128 // ??? shouldn't they be the same?
 #define BUFFER_SIZE 20*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
@@ -44,7 +43,7 @@ typedef dptr didata;
 typedef struct {
 	int num;
 	ftype type;
-	didata idata[MAX_IDATA];
+	didata idata;
 	int fsize;
 } inode;
 
