@@ -30,7 +30,7 @@ static ddata * __new_ddata();
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
 static bool __is_null_dptr(dptr addr);
 static void __append_to_buf(void * data, int bytes);
-static void __stage(lntype type, void * data);
+static dptr __stage(lntype type, void * data);
 static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
 //debugging
@@ -134,6 +134,8 @@ void create(int drive, int size) {
 
 	printk("Creating CR...\n");
 	printk("fs size (total)=%d bytes\nCR size=%d bytes\nlog size=%d bytes\n", size, sizeof(checkpoint), __log_size);
+	/*FIXME: lstart esta en 0,0 y el CR se va a guardar ahi!! 
+	(parece que la suma no anda!)*/
 	start = __dptr_add(__new_dptr(0, 0), sizeof(checkpoint));
 	__cp = __new_checkpoint(start, start);
 	__print_checkpoint(__cp);
@@ -173,29 +175,26 @@ void __mkdir(int inoden, char * filename) {
 	ddata * ddptr;
 	inode * inptr;
 	imap * imptr;
+	dptr prev;
 
 	ddptr = __new_ddata();
-	dptr prev = __cp->lend;
-	__stage(FS_DDATA, ddptr);
+	prev = __stage(FS_DDATA, ddptr);
 	
 	printk("ddata at: ");
 	__print_dptr(&prev);
 	printk("\n");
 
 	inptr = __new_inode(inoden, FS_DIR, prev);
-	prev = __cp->lend;
-	__stage(FS_INODE, inptr);
+	prev = __stage(FS_INODE, inptr);
 
 	printk("inode at: ");
 	__print_dptr(&prev);
 	printk("\n");
 
-//TODO: stage deberia devolver el dptr de lo que stageo!
-//TODO: lstart esta en 0,0 y el CR se va a guardar ahi!!
+
 
 	imptr = __new_imap(inoden, prev);
-	prev = __cp->lend;
-	__stage(FS_IMAP, imptr);
+	prev = __stage(FS_IMAP, imptr);
 
 	printk("imap at: ");
 	__print_dptr(&prev);
@@ -643,10 +642,12 @@ lnode * __load_lnode(dptr addr) {
 	return data;
 }
 
-void __stage(lntype type, void * data) {
+dptr __stage(lntype type, void * data) {
+	dptr prev_end = __cp->lend;
 	dptr new_end = __dptr_add(__cp->lend, __sizeof_lntype(type));
 	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
+	return prev_end;
 }
 
 void __append_to_buf(void * data, int bytes) {
