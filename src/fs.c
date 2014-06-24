@@ -469,13 +469,7 @@ bool __is_last_dir(char * dir) {
 	}
 	return true;
 }
-
-int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, void * mydidata) {
-	actualinode = __load_inode(mydinode);
-	mytype = actualinode.type;
-	mydidata = actualinode.idata;
-	return 0;
-}*/
+*/
 
 int __get_inoden(char * dir){
 	int i;
