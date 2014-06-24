@@ -50,13 +50,14 @@ static int __get_cr_entry(char * filename, cr_entry * crep);
 static int __get_inode(dimap * dimap, int inoden, dinode * retdinode, imap * retimap);
 
 static int __get_inoden(char * filename);
-
+static imap * __get_imap(int inoden);
 
 //main
 static void __mkdir(int inoden, char * basename);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
 static int __get_max_inoden();
+static int __get_parent_filename(char * filename, char * pfname);
 
 //vars
 static int __drive;
@@ -77,7 +78,7 @@ int __get_max_inoden() {
 	for (i=0; i<MAX_IMAP; i++) {
 		inoden = max(__cp->map[i].inoden, inoden);
 	}
-	return inoden+1;
+	return inoden;
 }
 
 int sync_cr() {
@@ -125,12 +126,16 @@ int testfs() {
 */	//__print_inode(__load_inode(dinode));
 	//__print_imap(&imap);
 
+	char pfname[MAX_PATH];
+	__get_parent_filename("/tere/Downloads/sarasa/file", pfname);
+	printk("%s\n", pfname);
+
 	printk("Chau!\n");
 	return 0;
 }
 
 void create(int drive, int size) {
-	dptr start, prev;
+	dptr start;
 	cr_entry crep;
 
 	__drive = drive;
@@ -157,6 +162,7 @@ void create(int drive, int size) {
 	__get_cr_entry("pepe", &crep);
 	__print_cr_entry(&crep);
 */
+
 	printk("\n...Done\n");
 }
 
@@ -171,8 +177,33 @@ void init() {
 	printk("...Done\n");
 }
 
-void mkdir() {
+int mkdir(char * filename) {
+	char pfname[MAX_PATH];
+	int pinn;
+
 	//TODO: mkdir deberia fijarse si el directorio es hijo de alguien y modificar a ese alguien!
+	if (__get_inoden(filename) != -1) { //file exists
+		return -1;
+	}
+
+	__get_parent_filename(filename, pfname);
+	if ((pinn=__get_inoden(pfname)) != -1) { //nonexistent parent
+		return -1;
+	}
+
+	__mkdir(__get_max_inoden()+1, filename);
+	__get_inode(pinn);
+	return 0;
+}
+
+int __get_parent_filename(char * filename, char * pfname) {
+	int i = strlen(filename)-1;
+	while (i > 0 && filename[i] != '/') {
+		i--;
+	}
+	memcpy(pfname, filename, i);
+	pfname[i]='\0';
+	return i;
 }
 
 void __mkdir(int inoden, char * filename) {
@@ -491,7 +522,7 @@ int __get_inoden(char * filename){
 	return -1;
 }
 
-imap * __get_imap(int inoden){
+imap * __get_imap(int inoden) {
 	int i;
 	cr_entry * curr;
 	for(i=0; i<=MAX_IMAP; i++){
@@ -710,7 +741,6 @@ void __print_cr_entry(cr_entry * entry) {
 }
 
 void __print_inode(inode * inptr) {
-	int i;
 	printk("inode:{\n");
 	printk("\tnum: %d\n", inptr->num);
 	printk("\ttype: %s\n", __ftype_to_str(inptr->type));
