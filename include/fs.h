@@ -61,7 +61,7 @@ typedef struct {
 typedef dptr dimap;
 
 typedef struct {
-	char dir_name[MAX_FILENAME];
+	char filename[MAX_FILENAME];
 	int inoden;
 	dimap map;
 } cr_entry;

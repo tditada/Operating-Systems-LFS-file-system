@@ -48,11 +48,15 @@ static char * __ftype_to_str(ftype type);
 static int __get_fst_dirname(char * filename, char * dir);
 static int __get_cr_entry(char * filename, cr_entry * crep);
 static int __get_inode(dimap * dimap, int inoden, dinode * retdinode, imap * retimap);
+
+static int __get_inoden(char * filename);
+
+
 //main
-static /*dptr*/ void __mkdir(int inoden, char * basename);
+static void __mkdir(int inoden, char * basename);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
-static int __get_inoden();
+static int __get_max_inoden();
 
 //vars
 static int __drive;
@@ -68,7 +72,7 @@ static lnode * __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
 
 /*TODO: static char * pwd;*/
 
-int __get_inoden() {
+int __get_max_inoden() {
 	int i, inoden = 0;
 	for (i=0; i<MAX_IMAP; i++) {
 		inoden = max(__cp->map[i].inoden, inoden);
@@ -191,8 +195,6 @@ void __mkdir(int inoden, char * filename) {
 	__print_dptr(&prev);
 	printk("\n");
 
-
-
 	imptr = __new_imap(inoden, prev);
 	prev = __stage(FS_IMAP, imptr);
 
@@ -210,7 +212,7 @@ void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
 		crep = &__cp->map[i];
 		if (__is_null_dptr(crep->map)) {
 			crep->inoden = inoden;
-			strcpy(crep->dir_name, dirname);
+			strcpy(crep->filename, dirname);
 			__set_dptr(crep->map, dimap);
 			return;
 		}
@@ -315,7 +317,7 @@ int remove(char * dir) {
 	// Borra el puntero al inodo del imapa.. 
 	for (i=0;i<=MAX_IMAP;i++) { //RECORRO EL CR
 		cr_entry entry=map[i];
-		if (streq(entry.dir_name, dir)) {
+		if (streq(entry.filename, dir)) {
 			n=entry.inoden;
 			imap * mypimap = __load_imap(entry.map)
 			for (j=0; j<=MAX_INODES j++) { //RECORRO EL IMAP
@@ -376,7 +378,7 @@ int __get_inode_from_directory(dinode myinode, char * name) {
 bool __search_cr(char * dir){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
-		if(strcmp((__cp->map)[i].dir_name, dir)){
+		if(strcmp((__cp->map)[i].filename, dir)){
 			return true;
 		}	
 	}
@@ -477,29 +479,26 @@ int __get_data_from_inode(dinode mydinode, inode * actualinode, ftype mytype, vo
 	return 0;
 }*/
 
-int _get_inoden(char * dir){
+int __get_inoden(char * filename){
 	int i;
-	cr_entry * _map=__cp->map;
-	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i];
-		if(strcmp(actual.dir_name,dir)){
-			return actual.inoden;
-		}		
+	cr_entry * curr;
+	for(i=0; i<=MAX_IMAP; i++){
+		curr = &(__cp->map[i]);
+		if (streq(curr->filename, filename)) {
+			return curr->inoden;
+		}
 	}
 	return -1;
 }
 
-
-imap * _get_imap(int _inoden){
-	cr_entry * _map=__cp->map;
-	imap * ret;
+imap * __get_imap(int inoden){
 	int i;
-	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry actual=_map[i];
-		if(_inoden==actual.inoden){
-			*ret=*__load_imap(actual.map);
-			return ret;
-		}		
+	cr_entry * curr;
+	for(i=0; i<=MAX_IMAP; i++){
+		curr = &(__cp->map[i]);
+		if (inoden == curr->inoden) {
+			return __load_imap(curr->map);
+		}
 	}
 	return NULL;
 }
@@ -540,7 +539,7 @@ int __get_cr_entry(char * filename, cr_entry * crep) {
 	}*/
 	cr_entry * map = __cp->map;
 	for (i=0; i<=MAX_IMAP && !__is_null_dptr(map[i].map);i++) {
-		if (streq(map[i].dir_name, dir)) {
+		if (streq(map[i].filename, dir)) {
 			*crep = map[i];
 			return read;
 		}
@@ -704,8 +703,8 @@ void __print_imap(imap * imptr) {
 }
 
 void __print_cr_entry(cr_entry * entry) {
-	printk("cr_entry:{\n\tinoden: %d\n\tdir_name: %s\n\tmap: ",
-	 entry->inoden, entry->dir_name);
+	printk("cr_entry:{\n\tinoden: %d\n\tfilename: %s\n\tmap: ",
+	 entry->inoden, entry->filename);
 	__print_dptr(&entry->map);
 	printk("\n}");
 }
