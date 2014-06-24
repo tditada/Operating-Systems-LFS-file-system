@@ -28,7 +28,9 @@ cmdtab[] =
 	{	"prodcons",		prodcons_main },
 	{	"divz",			divz_main },
 	{	"testfs",		testfs },
-	{   "cd",			cd}
+	{	"sync_cr",		sync_cr},
+	{	"sync_lbuf",	sync_lbuf},
+	{	"cd",			cd}
 };
 
 int

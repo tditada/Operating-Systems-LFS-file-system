@@ -22,6 +22,7 @@ static lnode * __next_lnode(lnode * curr);
 static dptr __new_dptr(unsigned short sector, int offset);
 static checkpoint * __new_checkpoint(dptr lstart, dptr lend);
 static lnode * __new_lnode(lntype type, void * data, dptr next);
+inode * __new_inode(int inoden, ftype type, dptr idata);
 //utils
 #define __SET(dest, src, size) memcpy(&(dest), &(src), size)
 #define __set_dptr(dest, src) __SET(dest, src, sizeof(dptr))
@@ -46,14 +47,14 @@ static int __get_fst_dirname(char * filename, char * dir);
 static int __get_cr_entry(char * filename, cr_entry * creptr);
 static int __get_inode(dimap * dimap, int inoden, dinode * retdinode, imap * retimap);
 //main
-static dptr __mkdir(char * basename);
+static dptr __mkdir(int inoden, char * basename);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
+static int __get_inoden();
 
 //vars
 static int __drive;
 static int __log_size;
-static int __inoden;
 
 static checkpoint * __cp;
 
@@ -65,19 +66,35 @@ static lnode * __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
 
 /*TODO: static char * pwd;*/
 
-int testfs() {
-	__inoden = 0; // REMOVE!
-	create(ATA0, 1<<15);
-	//init(); //TODO:remove!
+int __get_inoden() {
+	int i, inoden = 0;
+	for (i=0; i<MAX_IMAP; i++) {
+		inoden = max(__cp->map[i].inoden, inoden);
+	}
+	return inoden+1;
+}
 
+int sync_cr() {
 	printk("Syncing CR...\n");
 	__sync_cr(__new_dptr(0, 0));
 	printk("...Done\n");
+	return 0;
+}
 
+int sync_lbuf() {
 	printk("Syncing log buffer...\n");
 	__sync_log_buf();
 	printk("...Done\n");
+	return 0;
+}
 
+int testfs() {
+	create(ATA0, 1<<15);
+	//init(); //TODO:remove!
+
+	sync_cr();
+	sync_lbuf();
+	
 /*	printk("Loading CR...");
 	__cp = __load_checkpoint(__new_dptr(0,0));
 	__print_checkpoint(__cp);
@@ -93,8 +110,8 @@ int testfs() {
 	printk("ret:%d\n", __get_cr_entry("/", &crep));
 	__print_cr_entry(&crep);*/
 
-	__print_inode(__load_inode(__new_dptr(4, 400)));
-	__print_imap(__load_imap(__new_dptr(4, 492)));
+	/*__print_inode(__load_inode(__new_dptr(4, 400)));
+	__print_imap(__load_imap(__new_dptr(4, 492)));*/
 	
 /*	dinode dinode;
 	imap imap;
@@ -108,6 +125,7 @@ int testfs() {
 
 void create(int drive, int size) {
 	dptr start, prev;
+	cr_entry crep;
 
 	__drive = drive;
 	__log_size = size - sizeof(checkpoint);
@@ -121,11 +139,12 @@ void create(int drive, int size) {
 	printk("...Done\n");
 
 	printk("Creating /...\n");
-	prev = __mkdir("/");
-	__add_cr_entry("/", __inoden, prev);
-	__inoden++;
-	printk("...Done\n");
+	prev = __mkdir(0, "/");
+	__add_cr_entry("/", 0, prev);
 
+	__get_cr_entry("/", &crep);
+	__print_cr_entry(&crep);
+	printk("...Done\n");
 }
 
 void init() {
@@ -143,32 +162,48 @@ void init() {
 
 /*dptr mkdir*/
 
-
+inode * __new_inode(int inoden, ftype type, dptr idata) {
+	inode * inptr = malloc(sizeof(inode));
+	inptr->num = inoden;
+	inptr->type = type;
+	/*TODO:
+	switch(type) {
+	case FS_DIR:
+		inptr->fsize = sizeof(ddata);
+	or maybe fsize should be a parameter?
+	}*/
+	__set_dptr(inptr->idata, idata);
+	return inptr;
+}
 
 
 // /!\ NOT the filename!
-dptr __mkdir(char * basename) {
+dptr __mkdir(int inoden, char * basename) {
 	ddata data;
-	inode inode;
+	/*inode inode;*/
+	inode * inptr;
 	imap imap;
 
 	dptr prev = __cp->lend;
 	__stage(FS_DDATA, &data);
 
-	inode.num = __inoden;
+/*	inode.num = __inoden;
 	inode.type = FS_DIR;
-	__set_dptr(inode.idata, prev);
+	__set_dptr(inode.idata, prev);*/
+	inptr = __new_inode(inoden, FS_DIR, prev);
 	prev = __cp->lend;
-	__stage(FS_INODE, &inode);
+	__stage(FS_INODE, /*&inode*/ inptr);
 
-	imap.map[0].inoden = __inoden;
+	/*imap.map[0].inoden = __inoden;*/
+	imap.map[0].inoden = inoden;
 	__set_dptr(imap.map[0].inode, prev);
 	prev = __cp->lend;
 	__stage(FS_IMAP, &imap);
 
 	__print_ddata(&data);
 	printk("\n");
-	__print_inode(&inode);
+	__print_inode(inptr);
+	/*__print_inode(&inode);*/
 	printk("\n");
 	__print_imap(&imap);
 	printk("\n");
