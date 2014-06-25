@@ -5,9 +5,9 @@
 #include "disk.h"
 
 #define FS_DRIVE ATA0
-#define DATA_BLOCK_SIZE 128
+#define DATA_BLOCK_SIZE 64
 #define MAX_INODES 2
-#define MAX_IMAP 128
+#define MAX_IMAP 64
 #define FS_BUFFER_SIZE 12*sizeof(lnode) // get an actual number for this, there's a formula!
 #define MAX_DIR_FILES 8
 #define MAX_PATH 256

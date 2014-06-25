@@ -48,7 +48,6 @@ static void __print_cr_entry(cr_entry * entry);
 static char * __lntype_to_str(lntype type);
 static char * __ftype_to_str(ftype type);
 //lookups
-static int __get_fst_dirname(char * filename, char * dir);
 static void * __get_last_data(char * dir, ftype * type);
 static int __get_inoden(char * filename);
 static inode * __get_inode(imap * pimap, int inoden);
@@ -69,13 +68,13 @@ static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 static int __sizeof_lndata(lntype type);
-
-bool __is_node_alive(inode * inode);
-bool __cmp_inodes(inode * inode1, inode * inode2);
-bool __is_imap_alive(imap * imap);
-bool __cmp_imaps(imap * imap1, imap * imap2);
-bool __cmp_dptr(dptr dptr1, dptr dptr2);
-
+/*
+static bool __is_node_alive(inode * inode);
+static bool __cmp_inodes(inode * inode1, inode * inode2);
+static bool __is_imap_alive(imap * imap);
+static bool __cmp_imaps(imap * imap1, imap * imap2);
+static bool __cmp_dptr(dptr dptr1, dptr dptr2);
+*/
 
 
 //vars
@@ -172,6 +171,37 @@ int testfs() {
 	return 0;
 }
 
+
+int fs_cat(char * dir){
+	ftype type;
+	/*int i;*/
+	void * data=__get_last_data(dir, &type);
+	if(type==FS_DIR){
+		return ERROR;
+	}else{
+		fdata * _fdata=(fdata *) data;
+		printk(_fdata->data);
+		printk("\n");
+		return OK;
+	}
+}
+
+int fs_list(char * dir){
+	ftype type;
+	int i;
+	void * data=__get_last_data(dir, &type);
+	if(type==FS_FILE){
+		return ERROR;
+	}else{
+		ddata * _ddata=(ddata *)data;
+		for(i=0;i<=MAX_DIR_FILES;i++){
+			printk(((_ddata->map)[i]).name);
+			printk("\n");
+		}
+		return OK;
+	}
+}
+
 int fs_data() {
 	int size = __cp->lsize+sizeof(checkpoint);
 	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
@@ -202,8 +232,7 @@ int fs_creat(int size) {
 	__mkfile(0, "/", FS_DIR, NULL, 0);
 	printk("\n...Done\n");
 
-	fs_sync_cr();
-	fs_sync_lbuf();
+	fs_sync();
 	return 0;
 }
 
@@ -270,36 +299,42 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	imap * imptr;
 	dptr prev;
 
+/*	__print_dptr(&__cp->lend);
+	printk("\n");*/
 	switch(type) {
 	case FS_DIR:
 		ddptr = __new_ddata();
 		prev = __stage(FS_DDATA, ddptr);
-/*		printk("ddata at: ");*/
+		printk("ddata at: ");
 		break;
 	case FS_FILE:
-		if(bytes>0){
-			fdptr = __new_fdata(data, bytes);
-			prev = __stage(FS_FDATA, fdptr);
-		}
-/*		printk("fdata at: ");*/
+		fdptr = __new_fdata(data, bytes);
+		prev = __stage(FS_FDATA, fdptr);
+		printk("fdata at: ");
 	}
-/*	__print_dptr(&prev);
+	__print_dptr(&prev);
+	printk("\n");
+/*	__print_dptr(&__cp->lend);
 	printk("\n");*/
 
 	inptr = __new_inode(inoden, type, prev);
 	prev = __stage(FS_INODE, inptr);
 
-/*	printk("inode at: ");
+	printk("inode at: ");
 	__print_dptr(&prev);
+	printk("\n");
+/*	__print_dptr(&__cp->lend);
 	printk("\n");*/
 
 	imptr = __new_imap(inoden, prev);
 	prev = __stage(FS_IMAP, imptr);
 
-/*	printk("imap at: ");
+	printk("imap at: ");
 	__print_dptr(&prev);
 	printk("\n");
-*/
+/*	__print_dptr(&__cp->lend);
+	printk("\n");*/
+
 	__add_cr_entry(filename, inoden, prev);
 }
 
@@ -356,51 +391,12 @@ void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
 	//must check for the i >= MAX_IMAP elsewhere!
 }
 
-
-//TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
-//TODO: fs_sync: baja a disco
-
-/*int touch() { //JP
-	// mismo que mkdir pero para archivos
-}*/
-
-int fs_cat(char * dir){
-	ftype type;
-	/*int i;*/
-	void * data=__get_last_data(dir, &type);
-	if(type==FS_DIR){
-		return ERROR;
-	}else{
-		fdata * _fdata=(fdata *) data;
-		printk(_fdata->data);
-		printk("\n");
-		return OK;
-	}
-}
-
-int fs_list(char * dir){
-	ftype type;
-	int i;
-	void * data=__get_last_data(dir, &type);
-	if(type==FS_FILE){
-		return ERROR;
-	}else{
-		ddata * _ddata=(ddata *)data;
-		for(i=0;i<=MAX_DIR_FILES;i++){
-			printk(((_ddata->map)[i]).name);
-			printk("\n");
-		}
-		return OK;
-	}
-}
-
 void * __get_last_data(char * dir, ftype * type){
 	int inoden=__get_inoden(dir);
 	imap * imap=__get_imap(inoden);
 	inode * inode=__get_inode(imap,inoden);
 	return __get_data(inode,type);
 }
-
 
 // borra archivo o directorio (con todo lo que tenga adentro)
 int __remove(char * dir) {
@@ -416,20 +412,6 @@ int __remove(char * dir) {
 	return ERROR;
 }
 
-// bool __is_inode_dir(inode * myinode) {
-// 	if (myinode->type)==FS_DIR) {
-// 		return true; 
-// 	} return false;
-// }
-
-// bool __is_inode_file(inode * myinode) {
-// 	if (myinode->type)==FS_FILE) {
-// 		return true; 
-// 	} return false;
-// }
-
-
-
 imap * __get_imap_inoden(int inoden){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
@@ -439,7 +421,6 @@ imap * __get_imap_inoden(int inoden){
 	}
 	return NULL;
 }
-
 
 int __get_inoden(char * filename){
 	int i;
@@ -491,31 +472,7 @@ void * __get_data(inode * inode, ftype * rettype){
 	return data;
 }
 
-
-/*int __get_cr_entry(char * filename, cr_entry * crep) {
-	int i;
-	cr_entry * map = __cp->map;
-	for (i=0; i<=MAX_IMAP && !__is_null_dptr(map[i].map);i++) {
-		if (streq(map[i].filename, filename)) {
-			*crep = map[i];
-			return i;
-		}
-	}
-	return -1;
-}
-*/
-// Gets the first director copying everything before /
-// Returns number of chars read
-int __get_fst_dirname(char * filename, char * dir) {
-	int i=1;
-	while (filename[i-1] != '\0' && filename[i-1] != '/') {
-		i++;
-	}
-	memcpy(dir, filename, i);
-	dir[i]='\0';
-	return i;
-}
-
+/*
 bool __is_alive(lnode * lnptr){
 	imap * _imap;
 	inode * _inode;
@@ -601,7 +558,7 @@ bool __cmp_imaps(imap * imap1, imap * imap2){
 bool __cmp_dptr(dptr dptr1, dptr dptr2){
 	return dptr1.offset==dptr2.offset && dptr1.sector==dptr2.sector;
 }
-
+*/
 lnode * __next_lnode_buf(int * i) {
 	if (*i >= __log_buf_count) {
 		return NULL;
@@ -616,28 +573,28 @@ lnode * __next_lnode(lnode * curr) {
 
 dptr __stage(lntype type, void * data) {
 	dptr prev_end = __cp->lend;
+
 	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
 
-	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
-	int end = __dptr_to_int(&(__cp->lend));
-	dptr new_end;
-	if (__log_buf_size + end < top) {
-		new_end = __dptr_add(__cp->lend, __log_buf_size);
-	} else {
-		new_end = __dptr_add(__cp->lstart, __log_buf_size-(top-end));
-	}
-	
-	/*	printk("\nnew_end:\n");
-	__print_dptr(&new_end);
-	printk("\n");*/
+	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)
+		+sizeof(lnode))%__cp->lsize;
+
+	dptr new_end = __dptr_add(__cp->lstart, bytes);
 	__append_to_buf(__new_lnode(type, data, new_end), sizeof(lnode));
 	__set_dptr(__cp->lend, new_end);
+
 	__log_buf_count++;
 	return prev_end;
 }
 
-void __sync_cr(dptr address) {
-	__write(__cp, sizeof(checkpoint), address);
+void __append_to_buf(void * data, int bytes) {
+	if (__log_buf_size+bytes >= __cp->lsize) {
+		printk("Syncing...\n");
+		__sync_log_buf();
+		printk("...Done\n");
+	}
+	memcpy(__log_buf+__log_buf_size, data, bytes);
+	__log_buf_size += bytes;
 }
 
 void __sync_log_buf() {
@@ -657,6 +614,10 @@ void __sync_log_buf() {
 	printk("...Synced\n");
 }
 
+void __sync_cr(dptr address) {
+	__write(__cp, sizeof(checkpoint), address);
+}
+
 void __write(void * data, int bytes, dptr address) {
 	ata_write(FS_DRIVE, data, bytes, address.sector, address.offset);
 }
@@ -673,7 +634,7 @@ void __put_null(dptr * addr) {
 
 
 dptr __dptr_add(dptr address, int bytes) {
-	int _bytes = address.sector * SECTOR_SIZE + address.offset + bytes;
+	int _bytes = __dptr_to_int(&address) + bytes;
 	return __new_dptr(_bytes/SECTOR_SIZE, _bytes%SECTOR_SIZE);
 }
 
@@ -696,14 +657,6 @@ lnode * __load_lnode(dptr addr) {
 	return data;
 }
 
-void __append_to_buf(void * data, int bytes) {
-	if (__log_buf_size+bytes >= __cp->lsize/*-sizeof(lnode)*/) {
-		__sync_log_buf();
-	}
-	memcpy(__log_buf+__log_buf_size, data, bytes);
-	__log_buf_size += bytes;
-}
-
 checkpoint * __new_checkpoint(int lsize) {
 	int i;
 	printk("sizeof(lnode):%d\n", sizeof(lnode));
@@ -721,7 +674,11 @@ checkpoint * __new_checkpoint(int lsize) {
 
 fdata * __new_fdata(void * data, int bytes) {
 	fdata * fdptr = malloc(sizeof(fdata));
-	memcpy(fdptr->data, data, bytes);
+	if (bytes == 0) {
+		fdptr->data[0] = '\0';
+	} else {
+		memcpy(fdptr->data, data, bytes);
+	}
 	return fdptr;
 }
 
@@ -741,9 +698,9 @@ inode * __new_inode(int inoden, ftype type, didata idata) {
 	or maybe fsize should be a parameter?
 	}*/
 	__set_dptr(inptr->idata, idata);
-	printk("\n");
+/*	printk("\n");
 	__print_inode(inptr);
-	printk("\n");
+	printk("\n");*/
 	return inptr;
 }
 
