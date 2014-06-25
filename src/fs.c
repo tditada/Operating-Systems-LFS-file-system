@@ -70,6 +70,14 @@ static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 
+bool __is_node_alive(inode * inode);
+bool __cmp_inodes(inode * inode1, inode * inode2);
+bool __is_imap_alive(imap * imap);
+bool __cmp_imaps(imap * imap1, imap * imap2);
+bool __cmp_dptr(dptr dptr1, dptr dptr2);
+
+
+
 //vars
 /*static checkpoint * __cp;
 
@@ -407,14 +415,14 @@ bool file_existence(char * dir){
 	return false;
 }
 
-bool file_existence_inoden(int inoden){
+imap * __get_imap_inoden(int inoden){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
-		if((__cp->map)[i].inoden==inoden){
-			return true;
+				if((__cp->map)[i].inoden==inoden){
+			return __load_imap((__cp->map)[i].map);
 		}	
 	}
-	return false;
+	return NULL;
 }
 
 
@@ -494,31 +502,32 @@ int __get_fst_dirname(char * filename, char * dir) {
 }
 
 bool __is_alive(lnode * lnptr){
-	imap * imap;
-	inode * inode;
-	ddata * ddata;
+	imap * _imap;
+	inode * _inode;
+	// ddata * _ddata;
+	// fdata * _fdata;
 	lnode * nextlnode;
 	switch(lnptr->type){
 		case FS_IMAP:
-			imap=(imap*)lnptr->data;
-			return __is_imap_alive(imap);
+			_imap=(imap*)lnptr->data;
+			return __is_imap_alive(_imap);
 			break;
 		case FS_INODE:
-			inode=(inode*)lnptr->data;
-			return __is_node_alive(inode);
+			_inode=(inode*)lnptr->data;
+			return __is_node_alive(_inode);
 			break;
 		case FS_DDATA:
 			//Al tener un solo segmento de datos, revisamos el inodo que está si o si al lado
-			ddata=(ddata*)lnptr->data;
+			// _ddata=(ddata*)lnptr->data;
 			nextlnode=__next_lnode(lnptr);
-			inode=(inode*)nextlnode->data;
-			return __is_node_alive(inode);
+			_inode=(inode*)nextlnode->data;
+			return __is_node_alive(_inode);
 			break;
 		case FS_FDATA:
-			fdata=(fdata*)lnptr->data;
+			// _fdata=(fdata*)lnptr->data;
 			nextlnode=__next_lnode(lnptr);
-			inode=(inode*)nextlnode->data;
-			return __is_node_alive(inode);
+			_inode=(inode*)nextlnode->data;
+			return __is_node_alive(_inode);
 			break;
 		default:
 			return false;
@@ -526,17 +535,16 @@ bool __is_alive(lnode * lnptr){
 	}
 }
 
-bool __is_node_alive(inode * inode){
-	imap * imap=__get_imap(inode->num);
-	inode * _inode;
+bool __is_node_alive(inode * _inode){
+	imap * imap=__get_imap (_inode->num);
 	if(imap==NULL){
 		return false;
 	}else{
-		_inode=__get_inode(imap,inode->num);
-		if(inode==NULL){
+		inode * inode2=__get_inode(imap,_inode->num);
+		if(inode2==NULL){
 			return false;
 		}else{
-			return __cmp_inodes(_inode, inode);
+			return __cmp_inodes(inode2, _inode);
 		}
 	}
 }
@@ -546,16 +554,18 @@ bool __cmp_inodes(inode * inode1, inode * inode2){
 }
 
 
-bool __is_imap_alive(imap * imap){
+bool __is_imap_alive(imap * _imap){
 	int i;
 	cr_entry curr;
+	imap * auximap;
 	for(i=0;i<=MAX_IMAP;i++){
 		curr=(__cp->map)[i];
-		if(__cmp_imaps(__get_imap(curr.map),imap)){
-			return false;
+		auximap=__load_imap(curr.map);
+		if(__cmp_imaps(auximap,_imap)){
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 bool __cmp_imaps(imap * imap1, imap * imap2){
@@ -565,7 +575,7 @@ bool __cmp_imaps(imap * imap1, imap * imap2){
 	for(i=0;i<=MAX_IMAP;i++){
 		curr1=(imap1->map)[i];
 		curr2=(imap2->map)[i];
-		if(!strcmp(curr1.filename,curr2.filename)||!__cmp_dptr(curr1.inode,curr2,inode){
+		if((!strcmp(curr1.inoden,curr2.inoden))||!__cmp_dptr(curr1.inode,curr2.inode)){
 			return false;
 		}
 	}
