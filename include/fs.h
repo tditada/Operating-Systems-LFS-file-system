@@ -92,7 +92,7 @@ int fs_init();
 int fs_creat(int size);
 int testfs();
 int fs_data();
-bool file_existence(char * dir);
+bool fs_fexists(char * dir);
 int fs_sync();
 int fs_sync_cr();
 int fs_sync_lbuf();
@@ -106,6 +106,8 @@ int fs_print_lbuf();
 int fs_print_imap(char * filename);
 int fs_print_inoden(char * filename);
 int fs_print_log(int len);
+int fs_run_gc(int len);
+
 
 extern checkpoint * __cp;
 extern char __log_buf[FS_BUFFER_SIZE];

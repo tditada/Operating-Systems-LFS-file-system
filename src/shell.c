@@ -17,6 +17,7 @@ static int format(int argc, char *argv[]);
 static int inoden(int argc, char*argv[]);
 static int print_imap(int argc, char *argv[]);
 static int print_log(int argc, char *argv[]);
+static int gc(int argc, char *argv[]);
 
 
 /*
@@ -62,7 +63,8 @@ cmdtab[] = {
 	{	"inoden",		inoden},
 	{	"print_imap",	print_imap},
 	{	"print_log",	print_log},
-	{	"testfs",		testfs }
+	{	"testfs",		testfs},
+	{	"gc",			gc}
 };
 
 int
@@ -136,7 +138,7 @@ int cd(int argc, char *argv[]){
 	} else {
 		dir = argv[1];
 	}
-	if(file_existence(dir)){
+	if(fs_fexists(dir)){
 		if(dir[0]=='/'){
 			//Direccion absoluta
 			printk("pwd: '%s'->", pwd);
@@ -175,7 +177,14 @@ int ls(int argc, char *argv[]){
 }
 
 int mkdir(int argc, char *argv[]){
-	return fs_mkfile(argv[1], FS_DIR, NULL, 0); 
+	char path[MAX_PATH];
+	if (argv[1][0] != '/') {
+		memcpy(path, pwd, strlen(pwd)+1);
+		strcat(path, argv[1]);
+	} else {
+		memcpy(path, argv[1], strlen(argv[1])+1);
+	}
+	return fs_mkfile(path, FS_DIR, NULL, 0); 
 }
 
 //Parametros para el touch: nombre de archivo, texto
@@ -198,4 +207,10 @@ int print_log(int argc, char *argv[]) {
 	int param = atoi(argv[1]);
 	printk("arg: %s\n", param);
 	return fs_print_log(param);
+}
+
+int gc(int argc, char *argv[]) {
+	int param = atoi(argv[1]);
+	printk("arg: %s\n", param);
+	return fs_run_gc(param);
 }

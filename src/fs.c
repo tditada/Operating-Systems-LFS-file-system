@@ -69,14 +69,12 @@ static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 static int __sizeof_lndata(lntype type);
 
-
-static bool __is_node_alive(inode * inode);
+static bool __is_alive(lnode * lnptr);
+static bool __is_inode_alive(inode * inode);
 static bool __cmp_inodes(inode * inode1, inode * inode2);
 static bool __is_imap_alive(imap * imap);
 static bool __cmp_imaps(imap * imap1, imap * imap2);
 static bool __cmp_dptr(dptr dptr1, dptr dptr2);
-
-
 
 //vars
 /*static checkpoint * __cp;
@@ -130,6 +128,7 @@ int fs_print_log(int len) {
 		__print_dptr(&addr);
 		printk("\n");
 		__print_lnode(curr);
+		printk("alive?: %s\n", __is_alive(curr)? "true":"false");
 		printk("\n");
 		__set_dptr(addr, curr->next);
 		len--;
@@ -148,7 +147,7 @@ int fs_print_inoden(char * filename) {
 }
 
 //For SHELL use (cd command). Given a direction, searchs for it in the cr
-bool file_existence(char * dir){
+bool fs_fexists(char * dir){
 	int i;
 	for(i=0;i<MAX_IMAP;i++){
 		if(strcmp((__cp->map)[i].filename, dir)){
@@ -259,6 +258,70 @@ int fs_init() {
 	return 0;
 }
 
+int fs_run_gc(int len) {
+	printk("Starting garbage collection...\n");
+	// itero por los bloques en disco
+	// si son basura los dejo, si no, los recreo donde pueda (lease, el lend!!!)
+	bool done;
+	dptr addr = __cp->lstart;
+	lnode * curr, * next;
+
+	imap * imp;
+	inode * inp;
+	fdata * fdp;
+	ddata * ddp;
+	dptr prev;
+	int inoden;
+	int moved = 0;
+
+	do {
+		/*prev = curr;*/
+		curr = __load_lnode(addr);
+		__print_dptr(&addr);
+		printk("\n");
+/*		__print_lnode(curr);*/
+		__set_dptr(addr, curr->next);
+		printk("alive?: %s\n", __is_alive(curr)? "true":"false");
+		if (__is_alive(curr)) {
+			done = false;
+			while (!done) {
+				switch(curr->type) {
+				case FS_DDATA:
+					ddp = (ddata *)curr->data;
+					prev = __stage(FS_DDATA, ddp);
+					break;
+				case FS_FDATA:
+					fdp = (fdata *)curr->data;
+					prev = __stage(FS_FDATA, fdp);
+					break;
+				case FS_INODE:
+					inp = (inode *)curr->data;
+					__set_dptr(inp->idata, prev);
+					inoden = inp->num;
+					prev = __stage(FS_INODE, inp);
+					break;
+				case FS_IMAP:
+					imp = (imap *)curr->data;
+					__set_dptr(imp->map[0].inode, prev);
+					prev = __stage(FS_IMAP, imp);
+					__set_dptr(__get_cr_entry(inoden)->map, prev);
+					done = true;
+					break;
+				}
+				moved++;
+				curr = __load_lnode(curr->next);
+			}
+		}
+		len--;
+	} while(len>0);
+
+
+	fs_sync();
+	printk("Relocated %d blocks\n", moved);
+	printk("...Done\n");
+	return 0;
+}
+
 int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	char * pfname = malloc(sizeof(char)*MAX_PATH);
 	int pinoden;
@@ -298,7 +361,6 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 
 	__set_dptr(pimap->map[0].inode, prev);
 	prev = __stage(FS_IMAP, pimap);
-
 
 	__set_dptr(__get_cr_entry(pinoden)->map, prev);
 	return 0;
@@ -504,20 +566,20 @@ bool __is_alive(lnode * lnptr){
 			break;
 		case FS_INODE:
 			_inode=(inode*)lnptr->data;
-			return __is_node_alive(_inode);
+			return __is_inode_alive(_inode);
 			break;
 		case FS_DDATA:
 			//Al tener un solo segmento de datos, revisamos el inodo que está si o si al lado
 			// _ddata=(ddata*)lnptr->data;
 			nextlnode=__next_lnode(lnptr);
 			_inode=(inode*)nextlnode->data;
-			return __is_node_alive(_inode);
+			return __is_inode_alive(_inode);
 			break;
 		case FS_FDATA:
 			// _fdata=(fdata*)lnptr->data;
 			nextlnode=__next_lnode(lnptr);
 			_inode=(inode*)nextlnode->data;
-			return __is_node_alive(_inode);
+			return __is_inode_alive(_inode);
 			break;
 		default:
 			return false;
@@ -525,7 +587,7 @@ bool __is_alive(lnode * lnptr){
 	}
 }
 
-bool __is_node_alive(inode * _inode){
+bool __is_inode_alive(inode * _inode){
 	imap * imap=__get_imap (_inode->num);
 	if(imap==NULL){
 		return false;
