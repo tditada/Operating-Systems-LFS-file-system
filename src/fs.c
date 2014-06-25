@@ -201,13 +201,14 @@ int fs_list(char * dir){
 	ftype type;
 	int i;
 	void * data=__get_last_data(dir, &type);
-	if(type==FS_FILE){
+	if(type == FS_FILE){
 		return ERROR;
-	}else{
-		ddata * _ddata=(ddata *)data;
-		for(i=0;i<=MAX_DIR_FILES;i++){
-			printk(((_ddata->map)[i]).name);
-			printk("\n");
+	} else {
+		ddata * _ddata=(ddata *) data;
+		for(i=0; i<=MAX_DIR_FILES; i++){
+			if (((_ddata->map)[i]).inoden > 0) {
+				printk("%s\n", ((_ddata->map)[i]).name);
+			}
 		}
 		return OK;
 	}
@@ -355,6 +356,7 @@ void __add_ddata_entry(ddata * ddatap, int inoden, char * filename) {
 		if (ddatap->map[i].inoden <= 0) { // isn't set
 			ddatap->map[i].inoden = inoden;
 			strcpy(ddatap->map[i].name, filename);
+			return;
 		}
 	}
 }
