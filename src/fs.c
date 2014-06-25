@@ -114,6 +114,7 @@ int testfs() {
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
 	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
+	__print_checkpoint(__cp);
 	/*sync_cr();
 	sync_lbuf();*/
 /*	__print_checkpoint(__cp);*/
@@ -616,7 +617,8 @@ lnode * __load_lnode(dptr addr) {
 dptr __stage(lntype type, void * data) {
 	dptr prev_end = __cp->lend;
 	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
-	dptr new_end = __dptr_add(__cp->lstart, ((__dptr_to_int(&__cp->lend)+__sizeof_lntype(type))%__log_size);
+	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)+__sizeof_lntype(type))%__log_size;
+	dptr new_end = __dptr_add(__cp->lstart, bytes);
 	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
 	return prev_end;

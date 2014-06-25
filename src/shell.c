@@ -122,11 +122,11 @@ int cd(int argc, char *argv[]){
 			//Direccion absoluta
 			pwd=dir;
 		}else{
-			char * newdir;
+			/*char * newdir;
 			strcat(newdir,pwd);
 			strcat(newdir,"/");
 			strcat(newdir,dir);
-			strcpy(pwd,newdir);
+			strcpy(pwd,newdir);*/
 		}
 		return 0;
 	} else{
