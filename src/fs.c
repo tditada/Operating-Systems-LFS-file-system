@@ -619,11 +619,6 @@ void __sync_log_buf() {
 		return; //you shouldn't be syncing in the first place... Show off
 	}
 	if (fst_offset < last_offset) { // there was no overflow
-		/*printk("fst_offset: %d, last_offset: %d, total: %d\n", fst_offset, last_offset, total);*/
-		/*printk("__log_buf_size: %d\n", __log_buf_size);*/
-		__print_dptr(&(__cp->lstart));
-		printk("\n");
-		__print_dptr(&(__cp->lend));
 		printk("\nfrom: ");
 		__print_dptr(&(__cp->lfst));
 		printk("\nto: ");
