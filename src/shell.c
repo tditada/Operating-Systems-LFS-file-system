@@ -156,7 +156,7 @@ int cd(int argc, char *argv[]){
 }
 
 int format(int argc, char *argv[]){
-	fs_creat(49152);
+	fs_creat(1<<16);
 	return 0;
 }
 
@@ -174,6 +174,7 @@ int mkdir(int argc, char *argv[]){
 
 //Parametros para el touch: nombre de archivo, texto
 int touch(int argc, char *argv[]){
+	printk("arg: %s\n", argv[2]);
 	return fs_mkfile(argv[1], FS_FILE, argv[2], sizeof(strlen(argv[2])+1));
 }
 
