@@ -9,7 +9,7 @@ static void __sync_cr(dptr address);
 static void __write(void * data, int bytes, dptr address);
 //loads
 static void * __load(dptr addr, int bytes);
-#define __load_checkpoint(addr) ((checkpoint *)__load(addr, sizeof(checkpoint)))
+static checkpoint * __load_checkpoint(dptr addr);
 static lnode * __load_lnode(dptr addr);
 #define __LOAD(type, addr) ((type *)(__load_lnode(addr)->data))
 #define __load_imap(addr) __LOAD(imap, addr)
@@ -608,25 +608,24 @@ void __append_to_buf(void * data, int bytes) {
 
 void __sync_log_buf() {
 	printk("Syncing...\n");
-	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
-	int end = __dptr_to_int(&(__cp->lend));
-	if (__log_buf_size + end < top) {
-		printk("from: ");
-		__print_dptr(&__cp->lend);
-		printk("\nto: ");
-		dptr aux = __dptr_add(__cp->lend, __log_buf_size);
-		__print_dptr(&aux);
-		printk("\n");
-		__write(__log_buf, __log_buf_size, __cp->lend);
+	int fst_offset = __dptr_to_int(&__cp->lfst);
+	int last_offset = __dptr_to_int(&__cp->lend);
+	int total = __dptr_to_int(__cp->lstart)+__cp->lsize;
+
+	if (fst_offset == last_offset) {
+		return; //you shouldn't be syncing in the first place... Show off
+	}
+	if (fst_offset < last_offset) { // there was no overflow
+		__write(__log_buf, __log_buf_size, __cp->lfst);
 	} else {
-		printk("caso B\n");
-		__write(__log_buf, top-end, __cp->lend);
-		__write(__log_buf+(top-end), __log_buf_size-(top-end), __cp->lstart);
+		__write(__log_buf, total-last_offset, __cp->lfst);
+		__write(__log_buf+(total-last_offset), last_offset, __cp->lstart);	
 	}
 	/*for (i=0; i<__log_buf_size; i++) {
 		__log_buf_list[i] = NULL;
 	}*/
 	__log_buf_size = 0;
+	__set(__cp->lfst, __cp->lend);
 	printk("...Synced\n");
 }
 
@@ -673,6 +672,13 @@ lnode * __load_lnode(dptr addr) {
 	return data;
 }
 
+checkpoint * __load_checkpoint(dptr addr) {
+	checkpoint * cp = (checkpoint *)__load(addr, sizeof(checkpoint));
+	__set_dptr(cp->lfst, cp->lend);
+	return cp;
+}
+
+
 checkpoint * __new_checkpoint(int lsize) {
 	int i;
 	printk("sizeof(lnode):%d\n", sizeof(lnode));
@@ -681,6 +687,7 @@ checkpoint * __new_checkpoint(int lsize) {
 	checkpoint * cp = malloc(sizeof(checkpoint));
 	__set_dptr(cp->lstart, start);
 	__set_dptr(cp->lend, cp->lstart);
+	__set_dptr(cp->lfst, cp->lfst);
 	cp->lsize = lsize;
 	for (i=0; i<MAX_DIR_FILES; i++) {
 		cp->map[i].inoden=-1;

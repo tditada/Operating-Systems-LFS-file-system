@@ -71,6 +71,7 @@ typedef struct {
 	cr_entry map[MAX_IMAP];
 	dptr lstart;
 	dptr lend;
+	dptr lfst;
 	int lsize;
 } checkpoint;
 
