@@ -168,6 +168,8 @@ int testfs() {
 	__print_checkpoint(__cp);
 
 	printk("Chau!\n");*/
+	__load()
+
 	return 0;
 }
 
@@ -646,7 +648,7 @@ void * __load(dptr addr, int bytes) {
 
 lnode * __load_lnode(dptr addr) {
 	lnode * data = malloc(sizeof(lnode));
-	ata_read(FS_DRIVE, (void *) data, sizeof(lnode), addr.sector, addr.offset);
+	ata_read(FS_DRIVE, data, sizeof(lnode), addr.sector, addr.offset);
 	__print_lnode(data);
 
 	/*int size = __sizeof_lntype(((int *)data)[0]);*/
