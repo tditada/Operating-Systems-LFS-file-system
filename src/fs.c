@@ -70,6 +70,14 @@ static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 static int __sizeof_lndata(lntype type);
 
+bool __is_node_alive(inode * inode);
+bool __cmp_inodes(inode * inode1, inode * inode2);
+bool __is_imap_alive(imap * imap);
+bool __cmp_imaps(imap * imap1, imap * imap2);
+bool __cmp_dptr(dptr dptr1, dptr dptr2);
+
+
+
 //vars
 /*static checkpoint * __cp;
 
@@ -422,6 +430,16 @@ int __remove(char * dir) {
 
 
 
+imap * __get_imap_inoden(int inoden){
+	int i;
+	for(i=0;i<MAX_IMAP;i++){
+				if((__cp->map)[i].inoden==inoden){
+			return __load_imap((__cp->map)[i].map);
+		}	
+	}
+	return NULL;
+}
+
 
 int __get_inoden(char * filename){
 	int i;
@@ -473,19 +491,6 @@ void * __get_data(inode * inode, ftype * rettype){
 	return data;
 }
 
-//Pasamos el dato del directorio padre
-int __get_inoden_child(ddata * data, char * name) {
-	int i;
-	ddata_entry * map=data->map;
-	ddata_entry current;
-	for(i=0; i<=MAX_DIR_FILES;i++){
-		current=map[i];
-		if(strcmp(current.name,name)){
-			return current.inoden;
-		}
-	}
-	return -1;
-}
 
 /*int __get_cr_entry(char * filename, cr_entry * crep) {
 	int i;
@@ -509,6 +514,91 @@ int __get_fst_dirname(char * filename, char * dir) {
 	memcpy(dir, filename, i);
 	dir[i]='\0';
 	return i;
+}
+
+bool __is_alive(lnode * lnptr){
+	imap * _imap;
+	inode * _inode;
+	// ddata * _ddata;
+	// fdata * _fdata;
+	lnode * nextlnode;
+	switch(lnptr->type){
+		case FS_IMAP:
+			_imap=(imap*)lnptr->data;
+			return __is_imap_alive(_imap);
+			break;
+		case FS_INODE:
+			_inode=(inode*)lnptr->data;
+			return __is_node_alive(_inode);
+			break;
+		case FS_DDATA:
+			//Al tener un solo segmento de datos, revisamos el inodo que está si o si al lado
+			// _ddata=(ddata*)lnptr->data;
+			nextlnode=__next_lnode(lnptr);
+			_inode=(inode*)nextlnode->data;
+			return __is_node_alive(_inode);
+			break;
+		case FS_FDATA:
+			// _fdata=(fdata*)lnptr->data;
+			nextlnode=__next_lnode(lnptr);
+			_inode=(inode*)nextlnode->data;
+			return __is_node_alive(_inode);
+			break;
+		default:
+			return false;
+			break;
+	}
+}
+
+bool __is_node_alive(inode * _inode){
+	imap * imap=__get_imap (_inode->num);
+	if(imap==NULL){
+		return false;
+	}else{
+		inode * inode2=__get_inode(imap,_inode->num);
+		if(inode2==NULL){
+			return false;
+		}else{
+			return __cmp_inodes(inode2, _inode);
+		}
+	}
+}
+
+bool __cmp_inodes(inode * inode1, inode * inode2){
+	return inode1->num==inode2->num && inode1->fsize==inode2->fsize && inode1->type==inode2->type && __cmp_dptr(inode1->idata, inode2->idata);
+}
+
+
+bool __is_imap_alive(imap * _imap){
+	int i;
+	cr_entry curr;
+	imap * auximap;
+	for(i=0;i<=MAX_IMAP;i++){
+		curr=(__cp->map)[i];
+		auximap=__load_imap(curr.map);
+		if(__cmp_imaps(auximap,_imap)){
+			return true;
+		}
+	}
+	return false;
+}
+
+bool __cmp_imaps(imap * imap1, imap * imap2){
+	int i;
+	imap_entry curr1;
+	imap_entry curr2;
+	for(i=0;i<=MAX_IMAP;i++){
+		curr1=(imap1->map)[i];
+		curr2=(imap2->map)[i];
+		if((!strcmp(curr1.inoden,curr2.inoden))||!__cmp_dptr(curr1.inode,curr2.inode)){
+			return false;
+		}
+	}
+	return true;
+}
+
+bool __cmp_dptr(dptr dptr1, dptr dptr2){
+	return dptr1.offset==dptr2.offset && dptr1.sector==dptr2.sector;
 }
 
 lnode * __next_lnode_buf(int * i) {
