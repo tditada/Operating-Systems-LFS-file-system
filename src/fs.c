@@ -590,7 +590,8 @@ bool __cmp_imaps(imap * imap1, imap * imap2){
 	for(i=0;i<=MAX_IMAP;i++){
 		curr1=(imap1->map)[i];
 		curr2=(imap2->map)[i];
-		if((!strcmp(curr1.inoden,curr2.inoden))||!__cmp_dptr(curr1.inode,curr2.inode)){
+		if(!streq(curr1.inoden, curr2.inoden)
+			|| !__cmp_dptr(curr1.inode, curr2.inode)){
 			return false;
 		}
 	}
