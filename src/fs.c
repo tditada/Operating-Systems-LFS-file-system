@@ -106,8 +106,8 @@ int sync_lbuf() {
 int testfs() {
 	create(ATA0, 1<<15);
 	//init(); //TODO:remove!
-	mkfile("/tere", FS_DIR, NULL, 0);
-	mkfile("/tere/Downloads", FS_DIR, NULL, 0);
+	fs_mkfile("/tere", FS_DIR, NULL, 0);
+	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
 

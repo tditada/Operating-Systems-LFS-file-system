@@ -9,6 +9,10 @@
 
 static char * pwd="/";
 int cd(int argc, char *argv[]);
+int cat(int argc, char *argv[]);
+int list(int argc, char *argv[]);
+int mkdir(int argc, char *argv[]);
+int touch(int argc, char *argv[]);
 
 static struct cmdentry
 {
