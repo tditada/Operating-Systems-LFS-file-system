@@ -94,16 +94,16 @@ int fs_sync() {
 }
 
 int fs_sync_cr() {
-	/*printk("Syncing CR...\n");*/
+	printk("Syncing CR...\n");
 	__sync_cr(__new_dptr(0, 0));
-	/*printk("...Done\n");*/
+	printk("...Done\n");
 	return 0;
 }
 
 int fs_sync_lbuf() {
-	/*printk("Syncing log...\n");*/
+	printk("Syncing log...\n");
 	__sync_log_buf();
-	/*printk("...Done\n");*/
+	printk("...Done\n");
 	return 0;
 }
 
@@ -171,9 +171,10 @@ int testfs() {
 
 /*	__load_lnode(__new_dptr(17,364));
 	__load_lnode(__new_dptr(13,320));*/
-	__load_lnode(__new_dptr(21,408));
+
+/*	__load_lnode(__new_dptr(21,408));
 	__load_lnode(__dptr_add(__new_dptr(21,408), 2092));
-	__load_lnode(__dptr_add(__new_dptr(21,408), 2092*2));
+	__load_lnode(__dptr_add(__new_dptr(21,408), 2092*2));*/
 
 /*	__load(__new_dptr(17,364));
 */
@@ -585,7 +586,7 @@ dptr __stage(lntype type, void * data) {
 
 	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
 
-	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)
+	int bytes = (__dptr_to_int(&(__cp->lend))-__dptr_to_int(&(__cp->lstart))
 		+sizeof(lnode))%__cp->lsize;
 
 	dptr new_end = __dptr_add(__cp->lstart, bytes);
@@ -608,24 +609,54 @@ void __append_to_buf(void * data, int bytes) {
 
 void __sync_log_buf() {
 	printk("Syncing...\n");
-	int fst_offset = __dptr_to_int(&__cp->lfst);
-	int last_offset = __dptr_to_int(&__cp->lend);
-	int total = __dptr_to_int(__cp->lstart)+__cp->lsize;
+	int fst_offset = __dptr_to_int(&(__cp->lfst));
+	int last_offset = __dptr_to_int(&(__cp->lend));
+	int total = __dptr_to_int(&(__cp->lstart))+__cp->lsize;
+
+
 
 	if (fst_offset == last_offset) {
 		return; //you shouldn't be syncing in the first place... Show off
 	}
 	if (fst_offset < last_offset) { // there was no overflow
+		/*printk("fst_offset: %d, last_offset: %d, total: %d\n", fst_offset, last_offset, total);*/
+		/*printk("__log_buf_size: %d\n", __log_buf_size);*/
+		__print_dptr(&(__cp->lstart));
+		printk("\n");
+		__print_dptr(&(__cp->lend));
+		printk("\nfrom: ");
+		__print_dptr(&(__cp->lfst));
+		printk("\nto: ");
+		dptr aux = __dptr_add(__cp->lfst, __log_buf_size);
+		__print_dptr(&aux);
+		printk("\n");
 		__write(__log_buf, __log_buf_size, __cp->lfst);
 	} else {
 		__write(__log_buf, total-last_offset, __cp->lfst);
 		__write(__log_buf+(total-last_offset), last_offset, __cp->lstart);	
 	}
+
+
+/*	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
+	int end = __dptr_to_int(&(__cp->lend));
+	if (__log_buf_size + end < top) {
+		printk("from: ");
+		__print_dptr(&__cp->lend);
+		printk("\nto: ");
+		dptr aux = __dptr_add(__cp->lend, __log_buf_size);
+		__print_dptr(&aux);
+		printk("\n");
+		__write(__log_buf, __log_buf_size, __cp->lend);
+	} else {
+		printk("caso B\n");
+		__write(__log_buf, top-end, __cp->lend);
+		__write(__log_buf+(top-end), __log_buf_size-(top-end), __cp->lstart);
+	}*/
 	/*for (i=0; i<__log_buf_size; i++) {
 		__log_buf_list[i] = NULL;
 	}*/
 	__log_buf_size = 0;
-	__set(__cp->lfst, __cp->lend);
+	__set_dptr(__cp->lfst, __cp->lend);
 	printk("...Synced\n");
 }
 
@@ -687,7 +718,7 @@ checkpoint * __new_checkpoint(int lsize) {
 	checkpoint * cp = malloc(sizeof(checkpoint));
 	__set_dptr(cp->lstart, start);
 	__set_dptr(cp->lend, cp->lstart);
-	__set_dptr(cp->lfst, cp->lfst);
+	__set_dptr(cp->lfst, cp->lend);
 	cp->lsize = lsize;
 	for (i=0; i<MAX_DIR_FILES; i++) {
 		cp->map[i].inoden=-1;
