@@ -53,7 +53,7 @@ static int __get_inoden(char * filename);
 static inode * __get_inode(imap * pimap, int inoden);
 static imap * __get_imap(int inoden);
 static void * __get_data(inode * inode, ftype * rettype);
-/*static int __get_cr_entry(char * filename, cr_entry * crep);*/
+static cr_entry * __get_cr_entry(int inoden);
 
 //main
 static void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes);
@@ -68,6 +68,7 @@ static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 static int __sizeof_lndata(lntype type);
+
 /*
 static bool __is_node_alive(inode * inode);
 static bool __cmp_inodes(inode * inode1, inode * inode2);
@@ -262,7 +263,6 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	int pinoden;
 
 	printk("filename: %s\n", filename);
-	//TODO: mkdir deberia fijarse si el directorio es hijo de alguien y modificar a ese alguien!
 	if (__get_inoden(filename) != -1) { //file exists
 		printk("file exists: %s\n", filename);
 		return -1;
@@ -276,12 +276,11 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 		printk("nonexistent parent: %s\n", pfname);
 		return -1;
 	}
-	int inoden = __get_max_inoden()+1;
 
+	int inoden = __get_max_inoden()+1;
 	imap * pimap = __get_imap(pinoden);
-/*	__print_imap(pimap);*/
 	inode * pinode = __get_inode(pimap, pinoden);
-/*	__print_inode(pinode);*/
+
 	if (pinode->type != FS_DIR) {
 		printk("parent is not a directory!\n");
 		return -1;
@@ -290,7 +289,6 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	__mkfile(inoden, filename, type, data, bytes);
 
 	ddata * pddata = __load_ddata(pinode->idata);
-
 	__add_ddata_entry(pddata, inoden, filename);
 	dptr prev = __stage(FS_DDATA, pddata);
 
@@ -298,7 +296,10 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	prev = __stage(FS_INODE, pinode);
 
 	__set_dptr(pimap->map[0].inode, prev);
+	prev = __stage(FS_IMAP, pimap);
 
+
+	__set_dptr(__get_cr_entry(pinoden)->map, prev);
 	return 0;
 }
 
@@ -309,8 +310,6 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	imap * imptr;
 	dptr prev;
 
-/*	__print_dptr(&__cp->lend);
-	printk("\n");*/
 	switch(type) {
 	case FS_DIR:
 		ddptr = __new_ddata();
@@ -324,8 +323,6 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	}
 	__print_dptr(&prev);
 	printk("\n");
-/*	__print_dptr(&__cp->lend);
-	printk("\n");*/
 
 	inptr = __new_inode(inoden, type, prev);
 	prev = __stage(FS_INODE, inptr);
@@ -333,8 +330,6 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	printk("inode at: ");
 	__print_dptr(&prev);
 	printk("\n");
-/*	__print_dptr(&__cp->lend);
-	printk("\n");*/
 
 	imptr = __new_imap(inoden, prev);
 	prev = __stage(FS_IMAP, imptr);
@@ -342,8 +337,6 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	printk("imap at: ");
 	__print_dptr(&prev);
 	printk("\n");
-/*	__print_dptr(&__cp->lend);
-	printk("\n");*/
 
 	__add_cr_entry(filename, inoden, prev);
 }
@@ -384,6 +377,16 @@ int __get_parent_filename(char * filename, char * pfname) {
 		strncpy(pfname, filename, last);
 		return last;
 	}
+}
+
+cr_entry * __get_cr_entry(int inoden) {
+	int i;
+	for (i=0; i<MAX_IMAP && ((__cp->map)[i]).inoden!=-1; i++) {
+		if ((__cp->map[i]).inoden == inoden) {
+			return &(__cp->map[i]);
+		}
+	}
+	return NULL;
 }
 
 void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
@@ -451,7 +454,6 @@ imap * __get_imap(int inoden) {
 	for(i=0; i<=MAX_IMAP; i++){
 		curr = &(__cp->map[i]);
 		if (inoden == curr->inoden) {
-			/*__print_cr_entry(curr);*/
 			return __load_imap(curr->map);
 		}
 	}
@@ -613,8 +615,6 @@ void __sync_log_buf() {
 	int last_offset = __dptr_to_int(&(__cp->lend));
 	int total = __dptr_to_int(&(__cp->lstart))+__cp->lsize;
 
-
-
 	if (fst_offset == last_offset) {
 		return; //you shouldn't be syncing in the first place... Show off
 	}
@@ -630,26 +630,6 @@ void __sync_log_buf() {
 		__write(__log_buf, total-last_offset, __cp->lfst);
 		__write(__log_buf+(total-last_offset), last_offset, __cp->lstart);	
 	}
-
-
-/*	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
-	int end = __dptr_to_int(&(__cp->lend));
-	if (__log_buf_size + end < top) {
-		printk("from: ");
-		__print_dptr(&__cp->lend);
-		printk("\nto: ");
-		dptr aux = __dptr_add(__cp->lend, __log_buf_size);
-		__print_dptr(&aux);
-		printk("\n");
-		__write(__log_buf, __log_buf_size, __cp->lend);
-	} else {
-		printk("caso B\n");
-		__write(__log_buf, top-end, __cp->lend);
-		__write(__log_buf+(top-end), __log_buf_size-(top-end), __cp->lstart);
-	}*/
-	/*for (i=0; i<__log_buf_size; i++) {
-		__log_buf_list[i] = NULL;
-	}*/
 	__log_buf_size = 0;
 	__set_dptr(__cp->lfst, __cp->lend);
 	printk("...Synced\n");
@@ -688,13 +668,7 @@ void * __load(dptr addr, int bytes) {
 lnode * __load_lnode(dptr addr) {
 	lnode * data = malloc(sizeof(lnode));
 	ata_read(FS_DRIVE, (void *)data, sizeof(lnode), addr.sector, addr.offset);
-	__print_lnode(data);
-
-	/*int size = __sizeof_lntype(((int *)data)[0]);*/
-	//__print_lnode(data);
-/*	free(data + size);*/
-	//or else you'll read garbage
-
+	/*__print_lnode(data);*/
 	return data;
 }
 
@@ -747,9 +721,6 @@ inode * __new_inode(int inoden, ftype type, didata idata) {
 	or maybe fsize should be a parameter?
 	}*/
 	__set_dptr(inptr->idata, idata);
-/*	printk("\n");
-	__print_inode(inptr);
-	printk("\n");*/
 	return inptr;
 }
 
@@ -782,7 +753,6 @@ lnode * __new_lnode(lntype type, void * data, dptr next) {
 
 
 int __sizeof_lndata(lntype type) {
-	/*printk("\nlntype: %s\n", __lntype_to_str(type));*/
 	switch(type) {
 	case FS_IMAP:
 		return sizeof(imap);
@@ -792,7 +762,6 @@ int __sizeof_lndata(lntype type) {
 		return sizeof(ddata);
 	case FS_FDATA:
 		return sizeof(fdata);
-		//TODO: check for more cases!
 	}
 	return -1;//CHECK!
 }
@@ -906,7 +875,7 @@ char * __lntype_to_str(lntype type) {
 	case FS_IMAP:
 		return "FS_IMAP";
 	}
-	return "error";
+	return "ERROR";
 }
 
 char * __ftype_to_str(ftype type) {
@@ -916,5 +885,5 @@ char * __ftype_to_str(ftype type) {
 	case FS_DIR:
 		return "FS_DIR";
 	}
-	return "error";
+	return "ERROR";
 }
