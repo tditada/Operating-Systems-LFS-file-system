@@ -168,6 +168,7 @@ int cat(int argc, char *argv[]){
 
 int ls(int argc, char *argv[]){
 	if (argc == 1) {
+		printk("pwd: %s\n", pwd);
 		return fs_list(pwd);
 	}
 	return fs_list(argv[1]);
@@ -180,7 +181,7 @@ int mkdir(int argc, char *argv[]){
 //Parametros para el touch: nombre de archivo, texto
 int touch(int argc, char *argv[]){
 	printk("arg: %s\n", argv[2]);
-	return fs_mkfile(argv[1], FS_FILE, argv[2], sizeof(strlen(argv[2])+1));
+	return fs_mkfile(argv[1], FS_FILE, argv[2], strlen(argv[2])+1);
 }
 
 int inoden(int argc, char*argv[]) {
