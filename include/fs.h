@@ -8,14 +8,14 @@
 #define DATA_BLOCK_SIZE 64
 #define MAX_INODES 2
 #define MAX_IMAP 64
-#define FS_BUFFER_SIZE 12*sizeof(lnode) // get an actual number for this, there's a formula!
+#define FS_BUFFER_SIZE 12*sizeof(lnode)
 #define MAX_DIR_FILES 8
 #define MAX_PATH 256
 #define MAX_FILENAME 64
 #define MAX_LNODE_DATA_SIZE max(sizeof(inode),\
 							max(sizeof(imap),\
 							max(sizeof(ddata),\
-							sizeof(fdata)))) // TODO: check if these cases are all!!
+							sizeof(fdata))))
 
 typedef struct {
 	unsigned short sector;
@@ -80,39 +80,49 @@ typedef enum {
 } lntype;
 
 typedef struct {
-	lntype type; // /!\ MUST BE FIRST!
+	lntype type;
 	dptr next;
 	char data[MAX_LNODE_DATA_SIZE];
 } lnode;
 
-// Hacemos el CR en RAM
-// reservar buffer en RAM
-// mkfile de /
-int fs_init();
+
+// Elimina informacion vieja en el disco y crea un nuevo filesystem de tamaño 'size'
+// desde el comienzo del disco.
 int fs_creat(int size);
-int testfs();
+// Carga un filesystem preexistente
+int fs_init();
+// Muestra informacion sobre el filesystem
 int fs_data();
+// Verifica si un archivo existe
 bool fs_fexists(char * dir);
+// Baja tanto el checkpoint registry como el log buffer a disco
 int fs_sync();
+// Baja el checkpoint registry a disco
 int fs_sync_cr();
+// Baja el buffer del log a disco
 int fs_sync_lbuf();
-int fs_mkdir(char * filename);
+// cat de UNIX
 int fs_cat(char * dir);
+// ls de UNIX, solo funciona con paths absolutos
 int fs_list(char * dir);
+// Crea un archivo (de texto), o un directorio
 int fs_mkfile(char * filename, ftype type, void * data, int bytes);
-
+// Muestra el estado del checkpoint registry
 int fs_print_cr();
-int fs_print_lbuf();
+// Muestra el fragmento de imapa de 'filename'
 int fs_print_imap(char * filename);
+// Muestra el numero de inodo de 'filename'
 int fs_print_inoden(char * filename);
+// Muestra el estado de los primeros 'len' bloques del log 
 int fs_print_log(int len);
+// Ejecuta el recolector de basura, analiza 'len' bloques. 
+// De encontrar uno vivo, lo reposiciona.
 int fs_run_gc(int len);
-
+// Borra archivo o directorio (con todo lo que tenga adentro)
+int fs_remove(char * dir);
 
 extern checkpoint * __cp;
 extern char __log_buf[FS_BUFFER_SIZE];
 extern int __log_buf_size;
-extern lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
-extern int __log_buf_count;
 
 #endif

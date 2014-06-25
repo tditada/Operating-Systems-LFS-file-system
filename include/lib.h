@@ -19,6 +19,7 @@ char *strcat(char *dest, const char *src);
 char *strncat(char *dest, const char *src, unsigned count);
 #define streq(cs, ct) (strcmp(cs, ct)==0)
 int strcmp(const char *cs, const char *ct);
+char * strstr(register char *string, char *substring);
 int strncmp(const char *cs, const char *ct, unsigned count);
 char *strchr(const char *s, int c);
 char *strrchr(const char *s, int c);

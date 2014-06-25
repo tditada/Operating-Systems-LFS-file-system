@@ -17,7 +17,6 @@ static lnode * __load_lnode(dptr addr);
 #define __load_ddata(addr) __LOAD(ddata, addr)
 #define __load_fdata(addr) __LOAD(fdata, addr)
 //iteration
-static lnode * __next_lnode_buf(int * i);
 static lnode * __next_lnode(lnode * curr);
 //constructors
 static dptr __new_dptr(unsigned short sector, int offset);
@@ -57,8 +56,6 @@ static cr_entry * __get_cr_entry(int inoden);
 
 //main
 static void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes);
-/*static int __list(char * dir);*/
-static int __remove(char * dir);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
 static int __get_max_inoden();
@@ -75,15 +72,6 @@ static bool __cmp_inodes(inode * inode1, inode * inode2);
 static bool __is_imap_alive(imap * imap);
 static bool __cmp_imaps(imap * imap1, imap * imap2);
 static bool __cmp_dptr(dptr dptr1, dptr dptr2);
-
-//vars
-/*static checkpoint * __cp;
-
-static char __log_buf[FS_BUFFER_SIZE];
-static int __log_buf_size = 0;
-static lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
-*/
-
 
 
 int fs_sync() {
@@ -108,15 +96,6 @@ int fs_sync_lbuf() {
 
 int fs_print_cr() {
 	__print_checkpoint(__cp);
-	return 0;
-}
-
-int fs_print_lbuf() {
-	int i=0;
-	lnode * lnode;
-	while((lnode=__next_lnode_buf(&i))!=NULL) {
-		__print_lnode(lnode);
-	}
 	return 0;
 }
 
@@ -157,31 +136,6 @@ bool fs_fexists(char * dir){
 	return false;
 }
 
-int testfs() {
-/*	fs_creat(49152);
-	//fs_init(); //TODO:remove!
-	fs_mkfile("/tere", FS_DIR, NULL, 0);
-	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
-/*	char * text = "hola mundo!";
-	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
-/*	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
-	__print_checkpoint(__cp);
-
-	printk("Chau!\n");*/
-
-/*	__load_lnode(__new_dptr(17,364));
-	__load_lnode(__new_dptr(13,320));*/
-
-/*	__load_lnode(__new_dptr(21,408));
-	__load_lnode(__dptr_add(__new_dptr(21,408), 2092));
-	__load_lnode(__dptr_add(__new_dptr(21,408), 2092*2));*/
-
-/*	__load(__new_dptr(17,364));
-*/
-	return 0;
-}
-
-
 int fs_cat(char * dir){
 	ftype type;
 	/*int i;*/
@@ -218,9 +172,9 @@ int fs_data() {
 	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
 	printk("CR size=%d bytes (approx. %d sectors)\n", sizeof(checkpoint), sizeof(checkpoint)/SECTOR_SIZE);
 	printk("log size=%d bytes (approx. %d sectors)\n", __cp->lsize, __cp->lsize/SECTOR_SIZE);
-	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
-	printk("FS_BUFFER_SIZE=%d (approx.: %d sectors)\n", FS_BUFFER_SIZE, FS_BUFFER_SIZE/SECTOR_SIZE);
-	printk("sizeof(lnode)=%d (approx.: %d sectors)\n", sizeof(lnode), sizeof(lnode)/SECTOR_SIZE);
+	printk("log buffer size(curr)=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
+	printk("log buffer size(total)=%d (approx. %d sectors)\n", FS_BUFFER_SIZE, FS_BUFFER_SIZE/SECTOR_SIZE);
+	printk("sizeof(log node)=%d (approx. %d sectors)\n", sizeof(lnode), sizeof(lnode)/SECTOR_SIZE);
 	return 0;
 }
 
@@ -251,8 +205,6 @@ int fs_init() {
 	printk("Starting FS...\n");
 	__log_buf_size = 0;
 	__cp = __load_checkpoint(__new_dptr(0, 0));
-/*	__print_checkpoint(__cp);
-*/
 	printk("\n");
 	printk("...Done\n");
 	return 0;
@@ -260,11 +212,9 @@ int fs_init() {
 
 int fs_run_gc(int len) {
 	printk("Starting garbage collection...\n");
-	// itero por los bloques en disco
-	// si son basura los dejo, si no, los recreo donde pueda (lease, el lend!!!)
 	bool done;
 	dptr addr = __cp->lstart;
-	lnode * curr, * next;
+	lnode * curr;
 
 	imap * imp;
 	inode * inp;
@@ -275,11 +225,9 @@ int fs_run_gc(int len) {
 	int moved = 0;
 
 	do {
-		/*prev = curr;*/
 		curr = __load_lnode(addr);
 		__print_dptr(&addr);
 		printk("\n");
-/*		__print_lnode(curr);*/
 		__set_dptr(addr, curr->next);
 		printk("alive?: %s\n", __is_alive(curr)? "true":"false");
 		if (__is_alive(curr)) {
@@ -317,7 +265,7 @@ int fs_run_gc(int len) {
 
 
 	fs_sync();
-	printk("Relocated %d blocks\n", moved);
+	printk("Relocated %d living blocks\n", moved);
 	printk("...Done\n");
 	return 0;
 }
@@ -480,18 +428,21 @@ void * __get_last_data(char * dir, ftype * type){
 	return __get_data(inode,type);
 }
 
-// borra archivo o directorio (con todo lo que tenga adentro)
-int __remove(char * dir) {
+
+int fs_remove(char * dir) {
 	int i;
 	cr_entry * _map=__cp->map;
-	for(i=0;i<=MAX_IMAP;i++){
-		cr_entry current=_map[i];
-		if(strcmp(current.filename,dir)){
-			__put_null(&current.map);
-			return OK;
-		}		
+	cr_entry * current;
+	bool found = false;
+	for(i=0; i<=MAX_IMAP; i++){
+		current = &(_map[i]);
+		if (strstr(current->filename, dir) != NULL){
+			printk("removing... %s\n", current->filename);
+			__put_null(&(current->map));
+			found = true;
+		}
 	}
-	return ERROR;
+	return found? 0:ERROR;
 }
 
 imap * __get_imap_inoden(int inoden){
@@ -639,14 +590,6 @@ bool __cmp_dptr(dptr dptr1, dptr dptr2){
 	return dptr1.offset==dptr2.offset && dptr1.sector==dptr2.sector;
 }
 
-lnode * __next_lnode_buf(int * i) {
-	if (*i >= __log_buf_count) {
-		return NULL;
-	}
-	*i=(*i)+1;
-	return __log_buf_list[*i];
-}
-
 lnode * __next_lnode(lnode * curr) {
 	return __load_lnode(curr->next);
 }
@@ -663,7 +606,6 @@ dptr __stage(lntype type, void * data) {
 	__append_to_buf(__new_lnode(type, data, new_end), sizeof(lnode));
 	__set_dptr(__cp->lend, new_end);
 
-	__log_buf_count++;
 	return prev_end;
 }
 
@@ -782,12 +724,6 @@ inode * __new_inode(int inoden, ftype type, didata idata) {
 	inode * inptr = malloc(sizeof(inode));
 	inptr->num = inoden;
 	inptr->type = type;
-	/*TODO:
-	switch(type) {
-	case FS_DIR:
-		inptr->fsize = sizeof(ddata);
-	or maybe fsize should be a parameter?
-	}*/
 	__set_dptr(inptr->idata, idata);
 	return inptr;
 }

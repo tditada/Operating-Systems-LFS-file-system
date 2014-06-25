@@ -18,19 +18,13 @@ static int inoden(int argc, char*argv[]);
 static int print_imap(int argc, char *argv[]);
 static int print_log(int argc, char *argv[]);
 static int gc(int argc, char *argv[]);
+static int rm(int argc, char *argv[]);
 
-
-/*
-#ifndef FS_VARS
-#define FS_VARS*/
 checkpoint * __cp;
 char __log_buf[FS_BUFFER_SIZE];
 int __log_buf_size = 0;
-int __log_buf_count = 0;
-lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
 char * pwd="/";
-/*#endif
-*/
+
 static struct cmdentry{
 	char *name;
 	int (*func)(int argc, char **argv);
@@ -55,16 +49,15 @@ cmdtab[] = {
 	{	"cd",			cd},
 	{	"cat",			cat},
 	{	"ls",			ls},
+	{	"rm",			rm},
 	{	"mkdir",		mkdir},
 	{	"touch",		touch},
 	{	"fsdata",		fs_data},
 	{	"print_cr",		fs_print_cr},
-	{	"print_lbuf",	fs_print_lbuf},
 	{	"inoden",		inoden},
 	{	"print_imap",	print_imap},
 	{	"print_log",	print_log},
-	{	"testfs",		testfs},
-	{	"gc",			gc}
+	{	"gc",			gc},
 };
 
 int
@@ -213,4 +206,8 @@ int gc(int argc, char *argv[]) {
 	int param = atoi(argv[1]);
 	printk("arg: %s\n", param);
 	return fs_run_gc(param);
+}
+
+int rm(int argc, char *argv[]) {
+	return fs_remove(argv[1]);
 }
