@@ -109,8 +109,8 @@ int sync_lbuf() {
 int testfs() {
 	create(ATA0, 49152);
 	//init(); //TODO:remove!
-	mkfile("/tere", FS_DIR, NULL, 0);
-	mkfile("/tere/Downloads", FS_DIR, NULL, 0);
+	fs_mkfile("/tere", FS_DIR, NULL, 0);
+	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
 	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
@@ -192,7 +192,7 @@ void init() {
 	printk("...Done\n");
 }
 
-int mkfile(char * filename, ftype type, void * data, int bytes) {
+int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	char pfname[MAX_PATH];
 	int pinoden;
 
@@ -250,8 +250,10 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 /*		printk("ddata at: ");*/
 		break;
 	case FS_FILE:
-		fdptr = __new_fdata(data, bytes);
-		prev = __stage(FS_FDATA, fdptr);
+		if(bytes>0){
+			fdptr = __new_fdata(data, bytes);
+			prev = __stage(FS_FDATA, fdptr);
+		}
 /*		printk("fdata at: ");*/
 	}	
 /*	__print_dptr(&prev);

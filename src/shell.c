@@ -9,12 +9,16 @@
 
 static char * pwd="/";
 int cd(int argc, char *argv[]);
+int cat(int argc, char *argv[]);
+int list(int argc, char *argv[]);
+int mkdir(int argc, char *argv[]);
+int touch(int argc, char *argv[]);
 
 static struct cmdentry
 {
 	char *name;
 	int (*func)(int argc, char **argv);
-};
+}
 
 cmdtab[] =
 {
@@ -33,7 +37,9 @@ cmdtab[] =
 	{	"sync_lbuf",	sync_lbuf},
 	{	"cd",			cd},
 	{	"cat",			cat},
-	{	"list",			list}
+	{	"list",			list},
+	{	"mkdir",		mkdir},
+	{	"touch",		touch}
 };
 
 int
@@ -134,4 +140,13 @@ int cat(int argc, char *argv[]){
 
 int list(int argc, char *argv[]){
 	return fs_list(argv[1]);
+}
+
+int mkdir(int argc, char *argv[]){
+	return fs_mkfile(argv[1],FS_DIR, NULL,0); 
+}
+
+//Parametros para el touch: nombre de archivo, texto
+int touch(int argc, char *argv[]){
+	return fs_mkfile(argv[1],FS_FILE,argv[2],sizeof(argv[2]+1));
 }
