@@ -10,10 +10,14 @@
 static char * pwd="/";
 static int cd(int argc, char *argv[]);
 static int cat(int argc, char *argv[]);
-static int list(int argc, char *argv[]);
+static int ls(int argc, char *argv[]);
 static int mkdir(int argc, char *argv[]);
 static int touch(int argc, char *argv[]);
 static int format(int argc, char *argv[]);
+static int inoden(int argc, char*argv[]);
+static int print_imap(int argc, char *argv[]);
+static int print_log(int argc, char *argv[]);
+
 
 /*
 #ifndef FS_VARS
@@ -21,6 +25,7 @@ static int format(int argc, char *argv[]);
 checkpoint * __cp;
 char __log_buf[FS_BUFFER_SIZE];
 int __log_buf_size = 0;
+int __log_buf_count = 0;
 lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
 /*#endif
 */
@@ -47,12 +52,15 @@ cmdtab[] = {
 	{	"sync_lbuf",	fs_sync_lbuf},
 	{	"cd",			cd},
 	{	"cat",			cat},
-	{	"list",			list},
+	{	"ls",			ls},
 	{	"mkdir",		mkdir},
 	{	"touch",		touch},
 	{	"fsdata",		fs_data},
 	{	"print_cr",		fs_print_cr},
 	{	"print_lbuf",	fs_print_lbuf},
+	{	"inoden",		inoden},
+	{	"print_imap",	print_imap},
+	{	"print_log",	print_log},
 	{	"testfs",		testfs }
 };
 
@@ -156,7 +164,7 @@ int cat(int argc, char *argv[]){
 	return fs_cat(argv[1]);
 }
 
-int list(int argc, char *argv[]){
+int ls(int argc, char *argv[]){
 	return fs_list(argv[1]);
 }
 
@@ -167,4 +175,19 @@ int mkdir(int argc, char *argv[]){
 //Parametros para el touch: nombre de archivo, texto
 int touch(int argc, char *argv[]){
 	return fs_mkfile(argv[1], FS_FILE, argv[2], sizeof(strlen(argv[2])+1));
+}
+
+int inoden(int argc, char*argv[]) {
+	printk("arg: %s\n", argv[1]);
+	return fs_print_inoden(argv[1]);
+}
+
+int print_imap(int argc, char *argv[]){
+	printk("arg: %s\n", argv[1]);
+	return fs_print_imap(argv[1]);
+}
+
+int print_log(int argc, char *argv[]) {
+	printk("arg: %s\n", strlen(argv[1]));
+	return fs_print_log(strlen(argv[1]));
 }

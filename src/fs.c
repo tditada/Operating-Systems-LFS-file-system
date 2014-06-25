@@ -33,7 +33,6 @@ static fdata * __new_fdata(void * data, int bytes);
 static bool __is_null_dptr(dptr addr);
 static void __append_to_buf(void * data, int bytes);
 static dptr __stage(lntype type, void * data);
-static int __sizeof_lntype(lntype type);
 static dptr __dptr_add(dptr address, int bytes);
 static void __put_null(dptr * addr);
 static bool __is_null_dptr(dptr addr);
@@ -69,6 +68,7 @@ static void __add_ddata_entry(ddata * ddatap, int inoden, char * filename);
 
 static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
+static int __sizeof_lndata(lntype type);
 
 //vars
 /*static checkpoint * __cp;
@@ -78,13 +78,7 @@ static int __log_buf_size = 0;
 static lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
 */
 
-int __get_max_inoden() {
-	int i, inoden = 0;
-	for (i=0; i<MAX_IMAP; i++) {
-		inoden = max(__cp->map[i].inoden, inoden);
-	}
-	return inoden;
-}
+
 
 int fs_sync() {
 	fs_sync_cr();
@@ -93,27 +87,80 @@ int fs_sync() {
 }
 
 int fs_sync_cr() {
+	/*printk("Syncing CR...\n");*/
 	__sync_cr(__new_dptr(0, 0));
+	/*printk("...Done\n");*/
 	return 0;
 }
 
 int fs_sync_lbuf() {
+	/*printk("Syncing log...\n");*/
 	__sync_log_buf();
+	/*printk("...Done\n");*/
 	return 0;
 }
 
+int fs_print_cr() {
+	__print_checkpoint(__cp);
+	return 0;
+}
+
+int fs_print_lbuf() {
+	int i=0;
+	lnode * lnode;
+	while((lnode=__next_lnode_buf(&i))!=NULL) {
+		__print_lnode(lnode);
+	}
+	return 0;
+}
+
+int fs_print_log(int len) {
+	dptr addr = __cp->lstart;
+	lnode * curr;
+	do {
+		curr = __load_lnode(addr);
+		__print_dptr(&addr);
+		printk("\n");
+		__print_lnode(curr);
+		printk("\n");
+		__set_dptr(addr, curr->next);
+		len--;
+	} while(len>0);
+	return 0;
+}
+
+int fs_print_imap(char * filename) {
+	__print_imap(__get_imap(__get_inoden(filename)));
+	return 0;
+}
+
+int fs_print_inoden(char * filename) {
+	printk("inoden:%d\n", __get_inoden(filename));
+	return 0;
+}
+
+//For SHELL use (cd command). Given a direction, searchs for it in the cr
+bool file_existence(char * dir){
+	int i;
+	for(i=0;i<MAX_IMAP;i++){
+		if(strcmp((__cp->map)[i].filename, dir)){
+			return true;
+		}	
+	}
+	return false;
+}
+
 int testfs() {
-	printk("hola!");
-	fs_creat(49152);
+/*	fs_creat(49152);
 	//fs_init(); //TODO:remove!
 	fs_mkfile("/tere", FS_DIR, NULL, 0);
 	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
-	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
+/*	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
 	__print_checkpoint(__cp);
 
-	printk("Chau!\n");
+	printk("Chau!\n");*/
 	return 0;
 }
 
@@ -124,7 +171,7 @@ int fs_data() {
 	printk("log size=%d bytes (approx. %d sectors)\n", __cp->lsize, __cp->lsize/SECTOR_SIZE);
 	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
 	printk("FS_BUFFER_SIZE=%d (approx.: %d sectors)\n", FS_BUFFER_SIZE, FS_BUFFER_SIZE/SECTOR_SIZE);
-	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);
+	printk("sizeof(lnode)=%d (approx.: %d sectors)\n", sizeof(lnode), sizeof(lnode)/SECTOR_SIZE);
 	return 0;
 }
 
@@ -138,7 +185,7 @@ int fs_creat(int size) {
 	printk("...Done\n");
 
 	printk("Creating CR...\n");
-	__cp = __new_checkpoint(size-sizeof(checkpoint));
+	__cp = __new_checkpoint(((size-sizeof(checkpoint))/sizeof(lnode))*sizeof(lnode));
 	__print_checkpoint(__cp);
 	printk("\n");
 	printk("...Done\n");
@@ -204,6 +251,7 @@ int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
 	prev = __stage(FS_INODE, pinode);
 
 	__set_dptr(pimap->map[0].inode, prev);
+
 	return 0;
 }
 
@@ -226,7 +274,7 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 			prev = __stage(FS_FDATA, fdptr);
 		}
 /*		printk("fdata at: ");*/
-	}	
+	}
 /*	__print_dptr(&prev);
 	printk("\n");*/
 
@@ -245,6 +293,14 @@ void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes) {
 	printk("\n");
 */
 	__add_cr_entry(filename, inoden, prev);
+}
+
+int __get_max_inoden() {
+	int i, inoden = 0;
+	for (i=0; i<MAX_IMAP; i++) {
+		inoden = max(__cp->map[i].inoden, inoden);
+	}
+	return inoden;
 }
 
 void __add_ddata_entry(ddata * ddatap, int inoden, char * filename) {
@@ -290,38 +346,6 @@ void __add_cr_entry(const char * dirname, int inoden, dimap dimap) {
 		}
 	}
 	//must check for the i >= MAX_IMAP elsewhere!
-}
-
-fdata * __new_fdata(void * data, int bytes) {
-	fdata * fdptr = malloc(sizeof(fdata));
-	memcpy(fdptr->data, data, bytes);
-	return fdptr;
-}
-
-ddata * __new_ddata() {
-	ddata * ddptr = malloc(sizeof(ddata));
-	return ddptr;
-}
-
-inode * __new_inode(int inoden, ftype type, didata idata) {
-	inode * inptr = malloc(sizeof(inode));
-	inptr->num = inoden;
-	inptr->type = type;
-	/*TODO:
-	switch(type) {
-	case FS_DIR:
-		inptr->fsize = sizeof(ddata);
-	or maybe fsize should be a parameter?
-	}*/
-	__set_dptr(inptr->idata, idata);
-	return inptr;
-}
-
-imap * __new_imap(int inoden, dinode inode) {
-	imap * imptr = malloc(sizeof(imap));
-	imptr->map[0].inoden = inoden;
-	__set_dptr(imptr->map[0].inode, inode);
-	return imptr;
 }
 
 
@@ -396,16 +420,7 @@ int __remove(char * dir) {
 // 	} return false;
 // }
 
-//For SHELL use (cd command). Given a direction, searchs for it in the cr
-bool file_existence(char * dir){
-	int i;
-	for(i=0;i<MAX_IMAP;i++){
-		if(strcmp((__cp->map)[i].filename, dir)){
-			return true;
-		}	
-	}
-	return false;
-}
+
 
 
 int __get_inoden(char * filename){
@@ -497,7 +512,7 @@ int __get_fst_dirname(char * filename, char * dir) {
 }
 
 lnode * __next_lnode_buf(int * i) {
-	if (*i >= __log_buf_size) {
+	if (*i >= __log_buf_count) {
 		return NULL;
 	}
 	*i=(*i)+1;
@@ -508,37 +523,53 @@ lnode * __next_lnode(lnode * curr) {
 	return __load_lnode(curr->next);
 }
 
+dptr __stage(lntype type, void * data) {
+	dptr prev_end = __cp->lend;
+	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
+
+	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
+	int end = __dptr_to_int(&(__cp->lend));
+	dptr new_end;
+	if (__log_buf_size + end < top) {
+		new_end = __dptr_add(__cp->lend, __log_buf_size);
+	} else {
+		new_end = __dptr_add(__cp->lstart, __log_buf_size-(top-end));
+	}
+	
+	/*	printk("\nnew_end:\n");
+	__print_dptr(&new_end);
+	printk("\n");*/
+	__append_to_buf(__new_lnode(type, data, new_end), sizeof(lnode));
+	__set_dptr(__cp->lend, new_end);
+	__log_buf_count++;
+	return prev_end;
+}
+
 void __sync_cr(dptr address) {
 	__write(__cp, sizeof(checkpoint), address);
 }
 
 void __sync_log_buf() {
-	int i, bytes;
-	printk("fs_syncing...\n");
-	dptr write_from = __dptr_add(__cp->lend, -__log_buf_size);
-	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
-		bytes = min(__log_buf_size-(i*SECTOR_SIZE), SECTOR_SIZE);
-		__write(__log_buf+i*SECTOR_SIZE, bytes, __dptr_add(write_from, i*SECTOR_SIZE));
-		/*printk("fs_synced: %d sectors of %d\n", i, __log_buf_size/SECTOR_SIZE);*/
-		//TODO: Ver que no se esta haciendo de manera circular el tema del lend!!!!!!
+	printk("Syncing...\n");
+	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
+	int end = __dptr_to_int(&(__cp->lend));
+	if (__log_buf_size + end < top) {
+		__write(__log_buf, __log_buf_size, __cp->lend);
+	} else {
+		__write(__log_buf, top-end, __cp->lend);
+		__write(__log_buf+(top-end), __log_buf_size-(top-end), __cp->lstart);
 	}
 	/*for (i=0; i<__log_buf_size; i++) {
 		__log_buf_list[i] = NULL;
 	}*/
 	__log_buf_size = 0;
-	printk("...fs_synced\n");
+	printk("...Synced\n");
 }
 
 void __write(void * data, int bytes, dptr address) {
 	ata_write(FS_DRIVE, data, bytes, address.sector, address.offset);
 }
 
-dptr __new_dptr(unsigned short sector, int offset) {
-	dptr addr;
-	addr.sector = sector;
-	addr.offset = offset;
-	return addr;
-}
 
 bool __is_null_dptr(dptr addr) {
 	return addr.sector == 0 && addr.offset == 0;
@@ -549,18 +580,6 @@ void __put_null(dptr * addr) {
 	addr->offset = 0;
 }
 
-checkpoint * __new_checkpoint(int lsize) {
-	int i;
-	dptr start = __int_to_dptr(sizeof(checkpoint));
-	checkpoint * cp = malloc(sizeof(checkpoint));
-	__set_dptr(cp->lstart, start);
-	__set_dptr(cp->lend, cp->lstart);
-	cp->lsize = lsize;
-	for (i=0; i<MAX_DIR_FILES; i++) {
-		cp->map[i].inoden=-1;
-	}
-	return cp;
-}
 
 dptr __dptr_add(dptr address, int bytes) {
 	int _bytes = address.sector * SECTOR_SIZE + address.offset + bytes;
@@ -574,52 +593,98 @@ void * __load(dptr addr, int bytes) {
 }
 
 lnode * __load_lnode(dptr addr) {
-	lnode * data = malloc(MAX_LNODE_SIZE);
-	ata_read(FS_DRIVE, (void *) data, MAX_LNODE_SIZE, addr.sector, addr.offset);
+	lnode * data = malloc(sizeof(lnode));
+	ata_read(FS_DRIVE, (void *) data, sizeof(lnode), addr.sector, addr.offset);
+	__print_lnode(data);
 
-	int size = __sizeof_lntype(((int *)data)[0]);
-	free(data + size);
+	/*int size = __sizeof_lntype(((int *)data)[0]);*/
+	//__print_lnode(data);
+/*	free(data + size);*/
 	//or else you'll read garbage
 
 	return data;
 }
 
-dptr __stage(lntype type, void * data) {
-	dptr prev_end = __cp->lend;
-	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
-	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)+__sizeof_lntype(type))%__cp->lsize;
-	dptr new_end = __dptr_add(__cp->lstart, bytes);
-	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
-	__set_dptr(__cp->lend, new_end);
-	return prev_end;
-}
-
-dptr __int_to_dptr(int bytes) {
-	return __new_dptr(bytes/SECTOR_SIZE, bytes%SECTOR_SIZE);
-}
-
-int __dptr_to_int(dptr * addr) {
-	return (addr->sector)*SECTOR_SIZE + addr->offset;
-}
-
 void __append_to_buf(void * data, int bytes) {
-	if (__log_buf_size+bytes >= __cp->lsize/*-MAX_LNODE_SIZE*/) {
+	if (__log_buf_size+bytes >= __cp->lsize/*-sizeof(lnode)*/) {
 		__sync_log_buf();
 	}
 	memcpy(__log_buf+__log_buf_size, data, bytes);
 	__log_buf_size += bytes;
 }
 
+checkpoint * __new_checkpoint(int lsize) {
+	int i;
+	printk("sizeof(lnode):%d\n", sizeof(lnode));
+	printk("lsize: %d (%d lnodes)\n", lsize, lsize/sizeof(lnode));
+	dptr start = __int_to_dptr(sizeof(checkpoint));
+	checkpoint * cp = malloc(sizeof(checkpoint));
+	__set_dptr(cp->lstart, start);
+	__set_dptr(cp->lend, cp->lstart);
+	cp->lsize = lsize;
+	for (i=0; i<MAX_DIR_FILES; i++) {
+		cp->map[i].inoden=-1;
+	}
+	return cp;
+}
+
+fdata * __new_fdata(void * data, int bytes) {
+	fdata * fdptr = malloc(sizeof(fdata));
+	memcpy(fdptr->data, data, bytes);
+	return fdptr;
+}
+
+ddata * __new_ddata() {
+	ddata * ddptr = malloc(sizeof(ddata));
+	return ddptr;
+}
+
+inode * __new_inode(int inoden, ftype type, didata idata) {
+	inode * inptr = malloc(sizeof(inode));
+	inptr->num = inoden;
+	inptr->type = type;
+	/*TODO:
+	switch(type) {
+	case FS_DIR:
+		inptr->fsize = sizeof(ddata);
+	or maybe fsize should be a parameter?
+	}*/
+	__set_dptr(inptr->idata, idata);
+	printk("\n");
+	__print_inode(inptr);
+	printk("\n");
+	return inptr;
+}
+
+imap * __new_imap(int inoden, dinode inode) {
+	int i;
+	imap * imptr = malloc(sizeof(imap));
+	imptr->map[0].inoden = inoden;
+	for (i=1; i<MAX_INODES; i++) {
+		imptr->map[i].inoden = -1;
+	}
+	__set_dptr(imptr->map[0].inode, inode);
+	return imptr;
+}
+
+
+dptr __new_dptr(unsigned short sector, int offset) {
+	dptr addr;
+	addr.sector = sector;
+	addr.offset = offset;
+	return addr;
+}
+
 lnode * __new_lnode(lntype type, void * data, dptr next) {
-	int size = __sizeof_lntype(type);
-	lnode * lnptr = malloc(sizeof(lnode)+size);
+	lnode * lnptr = malloc(sizeof(lnode));
 	lnptr->type = type;
 	__set_dptr(lnptr->next, next);
-	memcpy(lnptr->data, data, size);
+	memcpy(lnptr->data, data, __sizeof_lndata(type));
 	return lnptr;
 }
 
-int __sizeof_lntype(lntype type) {
+
+int __sizeof_lndata(lntype type) {
 	/*printk("\nlntype: %s\n", __lntype_to_str(type));*/
 	switch(type) {
 	case FS_IMAP:
@@ -630,14 +695,18 @@ int __sizeof_lntype(lntype type) {
 		return sizeof(ddata);
 	case FS_FDATA:
 		return sizeof(fdata);
-	//TODO: check for more cases!
+		//TODO: check for more cases!
 	}
 	return -1;//CHECK!
 }
 
-int fs_print_cr() {
-	__print_checkpoint(__cp);
-	return 0;
+
+dptr __int_to_dptr(int bytes) {
+	return __new_dptr(bytes/SECTOR_SIZE, bytes%SECTOR_SIZE);
+}
+
+int __dptr_to_int(dptr * addr) {
+	return (addr->sector)*SECTOR_SIZE + addr->offset;
 }
 
 void __print_checkpoint(checkpoint * cp) {
@@ -662,9 +731,11 @@ void __print_imap(imap * imptr) {
 	int i;
 	printk("imap:{\n");
 	for (i=0; i<MAX_IMAP && !__is_null_dptr(imptr->map[i].inode); i++) {
-		printk("\t{ inoden:%d, inode: ", imptr->map[i].inoden);
-		__print_dptr(&((imptr->map[i]).inode));
-		printk("}\n");
+		if ((imptr->map[i]).inoden >= 0) {
+			printk("\t{ inoden:%d, inode: ", imptr->map[i].inoden);
+			__print_dptr(&((imptr->map[i]).inode));
+			printk("}\n");
+		}
 	}
 	printk("\n}");
 }
@@ -688,30 +759,6 @@ void __print_inode(inode * inptr) {
 		printk("\n");
 	}
 	printk("\t}\n}");
-}
-
-char * __lntype_to_str(lntype type) {
-	switch (type) {
-	case FS_FDATA:
-		return "FS_FDATA";
-	case FS_DDATA:
-		return "FS_DDATA";
-	case FS_INODE:
-		return "FS_INODE";
-	case FS_IMAP:
-		return "FS_IMAP";
-	}
-	return "error";
-}
-
-char * __ftype_to_str(ftype type) {
-	switch (type) {
-	case FS_FILE:
-		return "FS_FILE";
-	case FS_DIR:
-		return "FS_DIR";
-	}
-	return "error";
 }
 
 void __print_ddata(ddata * ddptr) {
@@ -751,11 +798,26 @@ void __print_lnode(lnode * lnptr) {
 	printk("\n\t}\n}\n");
 }
 
-int fs_print_lbuf() {
-	int i=0;
-	lnode * lnode;
-	while((lnode=__next_lnode_buf(&i))!=NULL) {
-		__print_lnode(lnode);
+char * __lntype_to_str(lntype type) {
+	switch (type) {
+	case FS_FDATA:
+		return "FS_FDATA";
+	case FS_DDATA:
+		return "FS_DDATA";
+	case FS_INODE:
+		return "FS_INODE";
+	case FS_IMAP:
+		return "FS_IMAP";
 	}
-	return 0;
+	return "error";
+}
+
+char * __ftype_to_str(ftype type) {
+	switch (type) {
+	case FS_FILE:
+		return "FS_FILE";
+	case FS_DIR:
+		return "FS_DIR";
+	}
+	return "error";
 }
