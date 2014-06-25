@@ -168,8 +168,15 @@ int testfs() {
 	__print_checkpoint(__cp);
 
 	printk("Chau!\n");*/
-	__load()
 
+/*	__load_lnode(__new_dptr(17,364));
+	__load_lnode(__new_dptr(13,320));*/
+	__load_lnode(__new_dptr(21,408));
+	__load_lnode(__dptr_add(__new_dptr(21,408), 2092));
+	__load_lnode(__dptr_add(__new_dptr(21,408), 2092*2));
+
+/*	__load(__new_dptr(17,364));
+*/
 	return 0;
 }
 
@@ -604,8 +611,15 @@ void __sync_log_buf() {
 	int top = __cp->lsize+__dptr_to_int(&(__cp->lstart));
 	int end = __dptr_to_int(&(__cp->lend));
 	if (__log_buf_size + end < top) {
+		printk("from: ");
+		__print_dptr(&__cp->lend);
+		printk("\nto: ");
+		dptr aux = __dptr_add(__cp->lend, __log_buf_size);
+		__print_dptr(&aux);
+		printk("\n");
 		__write(__log_buf, __log_buf_size, __cp->lend);
 	} else {
+		printk("caso B\n");
 		__write(__log_buf, top-end, __cp->lend);
 		__write(__log_buf+(top-end), __log_buf_size-(top-end), __cp->lstart);
 	}
@@ -648,7 +662,7 @@ void * __load(dptr addr, int bytes) {
 
 lnode * __load_lnode(dptr addr) {
 	lnode * data = malloc(sizeof(lnode));
-	ata_read(FS_DRIVE, data, sizeof(lnode), addr.sector, addr.offset);
+	ata_read(FS_DRIVE, (void *)data, sizeof(lnode), addr.sector, addr.offset);
 	__print_lnode(data);
 
 	/*int size = __sizeof_lntype(((int *)data)[0]);*/
