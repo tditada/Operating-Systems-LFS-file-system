@@ -195,6 +195,7 @@ int print_imap(int argc, char *argv[]){
 }
 
 int print_log(int argc, char *argv[]) {
-	printk("arg: %s\n", strlen(argv[1]));
-	return fs_print_log(strlen(argv[1]));
+	int param = atoi(argv[1]);
+	printk("arg: %s\n", param);
+	return fs_print_log(param);
 }

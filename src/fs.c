@@ -69,13 +69,13 @@ static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 static int __sizeof_lndata(lntype type);
 
-/*
+
 static bool __is_node_alive(inode * inode);
 static bool __cmp_inodes(inode * inode1, inode * inode2);
 static bool __is_imap_alive(imap * imap);
 static bool __cmp_imaps(imap * imap1, imap * imap2);
 static bool __cmp_dptr(dptr dptr1, dptr dptr2);
-*/
+
 
 
 //vars
@@ -491,7 +491,6 @@ void * __get_data(inode * inode, ftype * rettype){
 	return data;
 }
 
-/*
 bool __is_alive(lnode * lnptr){
 	imap * _imap;
 	inode * _inode;
@@ -566,7 +565,7 @@ bool __cmp_imaps(imap * imap1, imap * imap2){
 	for(i=0;i<=MAX_IMAP;i++){
 		curr1=(imap1->map)[i];
 		curr2=(imap2->map)[i];
-		if(!streq(curr1.inoden, curr2.inoden)
+		if(curr1.inoden!=curr2.inoden
 			|| !__cmp_dptr(curr1.inode, curr2.inode)){
 			return false;
 		}
@@ -577,7 +576,7 @@ bool __cmp_imaps(imap * imap1, imap * imap2){
 bool __cmp_dptr(dptr dptr1, dptr dptr2){
 	return dptr1.offset==dptr2.offset && dptr1.sector==dptr2.sector;
 }
-*/
+
 lnode * __next_lnode_buf(int * i) {
 	if (*i >= __log_buf_count) {
 		return NULL;
