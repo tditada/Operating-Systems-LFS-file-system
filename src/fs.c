@@ -259,7 +259,7 @@ int fs_init() {
 }
 
 int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
-	char pfname[MAX_PATH];
+	char * pfname = malloc(sizeof(char)*MAX_PATH);
 	int pinoden;
 
 	printk("filename: %s\n", filename);
@@ -367,14 +367,19 @@ int __get_parent_filename(char * filename, char * pfname) {
 		}
 	}
 	printk("i=%d/%d, last=%d\n", i, strlen(filename), last);
+
 	if (last == -1) {
 		return -1;
 	} else if (last == 0) {
 		pfname[0]=filename[0];
 		pfname[1]='\0';
+		
+		printk("test=%s\n", pfname);
 		return 1;
 	} else {
 		strncpy(pfname, filename, last);
+		pfname[i] = '\0';
+		printk("test=%s\n", pfname);
 		return last;
 	}
 }
