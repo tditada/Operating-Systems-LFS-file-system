@@ -21,7 +21,7 @@ static lnode * __next_lnode_buf(int * i);
 static lnode * __next_lnode(lnode * curr);
 //constructors
 static dptr __new_dptr(unsigned short sector, int offset);
-static checkpoint * __new_checkpoint(dptr lstart, dptr lend);
+static checkpoint * __new_checkpoint(int lsize);
 static lnode * __new_lnode(lntype type, void * data, dptr next);
 static inode * __new_inode(int inoden, ftype type, didata idata);
 static imap * __new_imap(int inoden, dinode inode);
@@ -71,9 +71,6 @@ static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 
 //vars
-static int __drive;
-static int __log_size;
-
 static checkpoint * __cp;
 
 static char __log_buf[BUFFER_SIZE];
@@ -107,7 +104,7 @@ int sync_lbuf() {
 }
 
 int testfs() {
-	create(ATA0, 49152);
+	create(49152);
 	//init(); //TODO:remove!
 	fs_mkfile("/tere", FS_DIR, NULL, 0);
 	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
@@ -155,12 +152,7 @@ int testfs() {
 	return 0;
 }
 
-void create(int drive, int size) {
-	dptr start;
-
-	__drive = drive;
-	__log_size = size - sizeof(checkpoint);
-
+void create(int size) {
 	printk("Creating CR...\n");
 /*	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
 	printk("CR size=%d bytes (approx. %d sectors)\n", sizeof(checkpoint), sizeof(checkpoint)/SECTOR_SIZE);
@@ -168,8 +160,7 @@ void create(int drive, int size) {
 	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
 	printk("BUFFER_SIZE=%d (approx.: %d sectors)\n", BUFFER_SIZE, BUFFER_SIZE/SECTOR_SIZE);
 	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);*/
-	start = __dptr_add(__new_dptr(0, 0), sizeof(checkpoint));
-	__cp = __new_checkpoint(start, start);
+	__cp = __new_checkpoint(size-sizeof(checkpoint));
 	__print_checkpoint(__cp);
 	printk("\n");
 	printk("...Done\n");
@@ -560,7 +551,7 @@ void __sync_log_buf() {
 }
 
 void __write(void * data, int bytes, dptr address) {
-	ata_write(__drive, data, bytes, address.sector, address.offset);
+	ata_write(FS_DRIVE, data, bytes, address.sector, address.offset);
 }
 
 dptr __new_dptr(unsigned short sector, int offset) {
@@ -579,13 +570,13 @@ void __put_null(dptr * addr) {
 	addr->offset = 0;
 }
 
-checkpoint * __new_checkpoint(dptr lstart, dptr lend) {
-	checkpoint * cp = malloc(sizeof(checkpoint));
-	cp->lstart.sector = lstart.sector;
-	cp->lstart.offset = lstart.offset;
-	cp->lend.sector = lend.sector;
-	cp->lend.offset = lend.offset;
+checkpoint * __new_checkpoint(int lsize) {
 	int i;
+	dptr start = __int_to_dptr(sizeof(checkpoint));
+	checkpoint * cp = malloc(sizeof(checkpoint));
+	__set_dptr(cp->lstart, start);
+	__set_dptr(cp->lend, cp->lstart);
+	cp->lsize = lsize;
 	for (i=0; i<MAX_DIR_FILES; i++) {
 		cp->map[i].inoden=-1;
 	}
@@ -599,13 +590,13 @@ dptr __dptr_add(dptr address, int bytes) {
 
 void * __load(dptr addr, int bytes) {
 	void * data = malloc(bytes);
-	ata_read(__drive, data, bytes, addr.sector, addr.offset);
+	ata_read(FS_DRIVE, data, bytes, addr.sector, addr.offset);
 	return data;
 }
 
 lnode * __load_lnode(dptr addr) {
 	lnode * data = malloc(MAX_LNODE_SIZE);
-	ata_read(__drive, (void *) data, MAX_LNODE_SIZE, addr.sector, addr.offset);
+	ata_read(FS_DRIVE, (void *) data, MAX_LNODE_SIZE, addr.sector, addr.offset);
 
 	int size = __sizeof_lntype(((int *)data)[0]);
 	free(data + size);
@@ -617,7 +608,7 @@ lnode * __load_lnode(dptr addr) {
 dptr __stage(lntype type, void * data) {
 	dptr prev_end = __cp->lend;
 	//TODO: deberia fijarse si no se lleno el fs antes de hacer esto! (lease, que no este live el nuevo puntero)
-	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)+__sizeof_lntype(type))%__log_size;
+	int bytes = (__dptr_to_int(&__cp->lend)-__dptr_to_int(&__cp->lstart)+__sizeof_lntype(type))%__cp->lsize;
 	dptr new_end = __dptr_add(__cp->lstart, bytes);
 	__append_to_buf(__new_lnode(type, data, new_end), __sizeof_lntype(type));
 	__set_dptr(__cp->lend, new_end);
@@ -633,7 +624,7 @@ int __dptr_to_int(dptr * addr) {
 }
 
 void __append_to_buf(void * data, int bytes) {
-	if (__log_buf_size+bytes >= __log_size/*-MAX_LNODE_SIZE*/) {
+	if (__log_buf_size+bytes >= __cp->lsize/*-MAX_LNODE_SIZE*/) {
 		__sync_log_buf();
 	}
 	memcpy(__log_buf+__log_buf_size, data, bytes);

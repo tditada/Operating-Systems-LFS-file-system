@@ -4,6 +4,7 @@
 #include "kernel.h"
 #include "disk.h"
 
+#define FS_DRIVE ATA0
 #define DATA_BLOCK_SIZE 128
 #define MAX_INODES 2
 #define MAX_IMAP 128
@@ -70,6 +71,7 @@ typedef struct {
 	cr_entry map[MAX_IMAP];
 	dptr lstart;
 	dptr lend;
+	int lsize;
 } checkpoint;
 
 typedef enum {
@@ -86,7 +88,7 @@ typedef struct {
 // reservar buffer en RAM
 // mkfile de /
 void init();
-void create(int drive, int size);
+void create(int size);
 int testfs();
 bool file_existence(char * dir);
 int sync_cr();
