@@ -8,7 +8,7 @@
 #define DATA_BLOCK_SIZE 128
 #define MAX_INODES 2
 #define MAX_IMAP 128
-#define BUFFER_SIZE 16*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
+#define FS_BUFFER_SIZE 16*MAX_LNODE_SIZE // get an actual number for this, there's a formula!
 #define MAX_DIR_FILES 8
 #define MAX_PATH 256
 #define MAX_FILENAME 64
@@ -87,7 +87,7 @@ typedef struct {
 // Hacemos el CR en RAM
 // reservar buffer en RAM
 // mkfile de /
-void init();
+int init();
 void create(int size);
 int testfs();
 bool file_existence(char * dir);
@@ -98,6 +98,9 @@ int fs_cat(char * dir);
 int fs_list(char * dir);
 int fs_mkfile(char * filename, ftype type, void * data, int bytes);
 
-/*int fs_mkfile(char * path);*/
+extern checkpoint * __cp;
+extern char __log_buf[FS_BUFFER_SIZE];
+extern int __log_buf_size;
+extern lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
 
 #endif

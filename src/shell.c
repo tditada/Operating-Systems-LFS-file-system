@@ -5,7 +5,7 @@
 
 #define BUFSIZE 200
 #define NARGS 20
-#define PROMPT "sOS> "
+#define PROMPT "SOS> "
 
 static char * pwd="/";
 int cd(int argc, char *argv[]);
@@ -13,15 +13,20 @@ int cat(int argc, char *argv[]);
 int list(int argc, char *argv[]);
 int mkdir(int argc, char *argv[]);
 int touch(int argc, char *argv[]);
-
-static struct cmdentry
-{
+/*
+#ifndef FS_VARS
+#define FS_VARS*/
+checkpoint * __cp;
+char __log_buf[FS_BUFFER_SIZE];
+int __log_buf_size = 0;
+lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
+/*#endif
+*/
+static struct cmdentry{
 	char *name;
 	int (*func)(int argc, char **argv);
 }
-
-cmdtab[] =
-{
+cmdtab[] = {
 	{	"setkb",		setkb_main },
 	{	"shell",		shell_main },
 	{	"sfilo",		simple_phil_main },
@@ -39,12 +44,12 @@ cmdtab[] =
 	{	"cat",			cat},
 	{	"list",			list},
 	{	"mkdir",		mkdir},
-	{	"touch",		touch}
+	{	"touch",		touch},
+	{ 	"init",			init}
 };
 
 int
-shell_main(int argc, char **argv)
-{
+shell_main(int argc, char **argv) {
 	char buf[BUFSIZE];
 	char *args[NARGS+1];
 	unsigned nargs;
@@ -52,58 +57,57 @@ shell_main(int argc, char **argv)
 	unsigned fg, bg;
 
 	mt_cons_getattr(&fg, &bg);
-	while ( true )
-	{
+	while (true) {
 		mt_cons_setattr(LIGHTGRAY, BLACK);
 		cprintk(LIGHTCYAN, BLACK, PROMPT);
 
 		/* leer linea de comando, fraccionarla en tokens y armar argv */
 		mt_getline(buf, sizeof buf);
 		nargs = separate(buf, args, NARGS);
-		if ( !nargs )
+		if (!nargs )
 			continue;
 		args[nargs] = NULL;
 
 		/* comandos internos */
-		if ( strcmp(args[0], "help") == 0 )
+		if (strcmp(args[0], "help") == 0 )
 		{
 			printk("Comandos internos:\n");
 			printk("\thelp\n");
 			printk("\texit\n");
 			printk("\treboot\n");
 			printk("Aplicaciones:\n");\
-			for ( cp = cmdtab ; cp->name ; cp++ )
+			for (cp = cmdtab; cp->name; cp++) {
 				printk("\t%s\n", cp->name);
+			}
 			continue;
 		}
 
-		if ( strcmp(args[0], "exit") == 0 )
-		{
+		if (strcmp(args[0], "exit") == 0) {
 			mt_cons_setattr(fg, bg);
 			return nargs > 1 ? atoi(args[1]) : 0;
 		}
 
-		if ( strcmp(args[0], "reboot") == 0 )
-		{
+		if (strcmp(args[0], "reboot") == 0) {
 			*(short *) 0x472 = 0x1234;
-			while ( true )
+			while (true )
 				outb(0x64, 0xFE);
 		}
 
 		/* aplicaciones */
 		bool found = false;
-		for ( cp = cmdtab ; cp->name ; cp++ )
-			if ( strcmp(args[0], cp->name) == 0 )
-			{
+		for (cp = cmdtab; cp->name; cp++) {
+			if (strcmp(args[0], cp->name) == 0) {
 				found = true;
 				int n = cp->func(nargs, args);
-				if ( n != 0 )
+				if (n != 0 )
 					cprintk(LIGHTRED, BLACK, "Status: %d\n", n);
 				break;
 			}
+		}
 
-		if ( !found )
+		if (!found ){
 			cprintk(LIGHTRED, BLACK, "Comando %s desconocido\n", args[0]);
+		}
 	}
 }
 

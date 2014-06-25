@@ -71,15 +71,12 @@ static int __dptr_to_int(dptr * addr);
 static dptr __int_to_dptr(int bytes);
 
 //vars
-static checkpoint * __cp;
+/*static checkpoint * __cp;
 
-static char __log_buf[BUFFER_SIZE];
+static char __log_buf[FS_BUFFER_SIZE];
 static int __log_buf_size = 0;
-static lnode * __log_buf_list[BUFFER_SIZE/sizeof(lnode)];
-
-/*static char __path_buffer[MAX_PATH];*/
-
-/*TODO: static char * pwd;*/
+static lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
+*/
 
 int __get_max_inoden() {
 	int i, inoden = 0;
@@ -104,6 +101,7 @@ int sync_lbuf() {
 }
 
 int testfs() {
+	printk("hola!");
 	create(49152);
 	//init(); //TODO:remove!
 	fs_mkfile("/tere", FS_DIR, NULL, 0);
@@ -158,7 +156,7 @@ void create(int size) {
 	printk("CR size=%d bytes (approx. %d sectors)\n", sizeof(checkpoint), sizeof(checkpoint)/SECTOR_SIZE);
 	printk("log size=%d bytes (approx. %d sectors)\n", __log_size, __log_size/SECTOR_SIZE);
 	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
-	printk("BUFFER_SIZE=%d (approx.: %d sectors)\n", BUFFER_SIZE, BUFFER_SIZE/SECTOR_SIZE);
+	printk("FS_BUFFER_SIZE=%d (approx.: %d sectors)\n", FS_BUFFER_SIZE, FS_BUFFER_SIZE/SECTOR_SIZE);
 	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);*/
 	__cp = __new_checkpoint(size-sizeof(checkpoint));
 	__print_checkpoint(__cp);
@@ -173,15 +171,15 @@ void create(int size) {
 	sync_lbuf();
 }
 
-void init() {
+int init() {
 	printk("Starting FS...\n");
 	__log_buf_size = 0;
 	__cp = __load_checkpoint(__new_dptr(0, 0));
 	__print_checkpoint(__cp);
 
-
 	printk("\n");
 	printk("...Done\n");
+	return 0;
 }
 
 int fs_mkfile(char * filename, ftype type, void * data, int bytes) {
