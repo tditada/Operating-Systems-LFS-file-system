@@ -87,16 +87,20 @@ typedef struct {
 // Hacemos el CR en RAM
 // reservar buffer en RAM
 // mkfile de /
-int init();
-void create(int size);
+int fs_init();
+int fs_creat(int size);
 int testfs();
+int fs_data();
 bool file_existence(char * dir);
-int sync_cr();
-int sync_lbuf();
+int fs_sync();
+int fs_sync_cr();
+int fs_sync_lbuf();
 int fs_mkdir(char * filename);
 int fs_cat(char * dir);
 int fs_list(char * dir);
 int fs_mkfile(char * filename, ftype type, void * data, int bytes);
+int fs_print_lbuf();
+int fs_print_cr();
 
 extern checkpoint * __cp;
 extern char __log_buf[FS_BUFFER_SIZE];

@@ -3,7 +3,7 @@
 #define OK 0
 #define ERROR -1
 
-//syncs
+//fs_syncs
 static void __sync_log_buf();
 static void __sync_cr(dptr address);
 static void __write(void * data, int bytes, dptr address);
@@ -59,7 +59,7 @@ static void * __get_data(inode * inode, ftype * rettype);
 
 //main
 static void __mkfile(int inoden, char * filename, ftype type, void * data, int bytes);
-static int __list(char * dir);
+/*static int __list(char * dir);*/
 static int __remove(char * dir);
 
 static void __add_cr_entry(const char * filename, int inoden, dimap map);
@@ -86,78 +86,58 @@ int __get_max_inoden() {
 	return inoden;
 }
 
-int sync_cr() {
-/*	printk("Syncing CR...\n");*/
-	__sync_cr(__dptr_add(__new_dptr(0, 0), sizeof(checkpoint)));
-/*	printk("...Done\n");*/
+int fs_sync() {
+	fs_sync_cr();
+	fs_sync_lbuf();
 	return 0;
 }
 
-int sync_lbuf() {
-/*	printk("Syncing log buffer...\n");*/
+int fs_sync_cr() {
+	__sync_cr(__new_dptr(0, 0));
+	return 0;
+}
+
+int fs_sync_lbuf() {
 	__sync_log_buf();
-/*	printk("...Done\n");*/
 	return 0;
 }
 
 int testfs() {
 	printk("hola!");
-	create(49152);
-	//init(); //TODO:remove!
+	fs_creat(49152);
+	//fs_init(); //TODO:remove!
 	fs_mkfile("/tere", FS_DIR, NULL, 0);
 	fs_mkfile("/tere/Downloads", FS_DIR, NULL, 0);
 /*	char * text = "hola mundo!";
 	mkfile("/tere/Downloads/pepe.txt", FS_FILE, text, strlen(text)+1);*/
 	printk("log buf size: %d (approx: %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
 	__print_checkpoint(__cp);
-	/*sync_cr();
-	sync_lbuf();*/
-/*	__print_checkpoint(__cp);*/
-
-
-/*	printk("Loading CR...");
-	__cp = __load_checkpoint(__new_dptr(0,0));
-	__print_checkpoint(__cp);
-	printk("...Done\n");
-*/
-/*	char * dir;
-	printk("%d, %s\n", __get_fst_dirname("/d1/d2/d3/f1", dir), dir);
-	printk("%d, %s\n", __get_fst_dirname("d1/d2/d3/f1", dir), dir);
-*/
-
-	/*printk("__get_cr_entry...\n");
-	cr_entry crep;
-	printk("ret:%d\n", __get_cr_entry("/", &crep));
-	__print_cr_entry(&crep);*/
-
-	/*__print_inode(__load_inode(__new_dptr(4, 400)));
-	__print_imap(__load_imap(__new_dptr(4, 492)));*/
-	
-/*	dinode dinode;
-	imap imap;
-	__get_inode(&crep.map, 0, &dinode, &imap);
-*/	//__print_inode(__load_inode(dinode));
-	//__print_imap(&imap);
-	
-	/*char * ret;
-	__get_fst_dirname("/Tere/Downloads", ret);
-	printk(ret);
-*/
-	/*	sync_cr();
-	sync_lbuf();*/
 
 	printk("Chau!\n");
 	return 0;
 }
 
-void create(int size) {
-	printk("Creating CR...\n");
-/*	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
+int fs_data() {
+	int size = __cp->lsize+sizeof(checkpoint);
+	printk("fs size (total)=%d bytes (approx. %d sectors)\n", size, size/SECTOR_SIZE);
 	printk("CR size=%d bytes (approx. %d sectors)\n", sizeof(checkpoint), sizeof(checkpoint)/SECTOR_SIZE);
-	printk("log size=%d bytes (approx. %d sectors)\n", __log_size, __log_size/SECTOR_SIZE);
+	printk("log size=%d bytes (approx. %d sectors)\n", __cp->lsize, __cp->lsize/SECTOR_SIZE);
 	printk("log_buf_size=%d bytes (approx. %d sectors)\n", __log_buf_size, __log_buf_size/SECTOR_SIZE);
 	printk("FS_BUFFER_SIZE=%d (approx.: %d sectors)\n", FS_BUFFER_SIZE, FS_BUFFER_SIZE/SECTOR_SIZE);
-	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);*/
+	printk("MAX_LNODE_SIZE=%d (approx.: %d sectors)\n", MAX_LNODE_SIZE, MAX_LNODE_SIZE/SECTOR_SIZE);
+	return 0;
+}
+
+int fs_creat(int size) {
+	printk("Wiping old FS...\n");
+	int i=0;
+	char empty[SECTOR_SIZE];
+	for (i=0; i<(1<<16)/SECTOR_SIZE; i+=SECTOR_SIZE) {
+		__write(empty, SECTOR_SIZE, __int_to_dptr(i*SECTOR_SIZE));
+	}
+	printk("...Done\n");
+
+	printk("Creating CR...\n");
 	__cp = __new_checkpoint(size-sizeof(checkpoint));
 	__print_checkpoint(__cp);
 	printk("\n");
@@ -167,16 +147,17 @@ void create(int size) {
 	__mkfile(0, "/", FS_DIR, NULL, 0);
 	printk("\n...Done\n");
 
-	sync_cr();
-	sync_lbuf();
+	fs_sync_cr();
+	fs_sync_lbuf();
+	return 0;
 }
 
-int init() {
+int fs_init() {
 	printk("Starting FS...\n");
 	__log_buf_size = 0;
 	__cp = __load_checkpoint(__new_dptr(0, 0));
-	__print_checkpoint(__cp);
-
+/*	__print_checkpoint(__cp);
+*/
 	printk("\n");
 	printk("...Done\n");
 	return 0;
@@ -345,7 +326,7 @@ imap * __new_imap(int inoden, dinode inode) {
 
 
 //TODO: como escribir en el __log_buf (memcpy al final o castear el final al tipo que tengas, trabajar ahi y listo)
-//TODO: sync: baja a disco
+//TODO: fs_sync: baja a disco
 
 /*int touch() { //JP
 	// mismo que mkdir pero para archivos
@@ -533,19 +514,19 @@ void __sync_cr(dptr address) {
 
 void __sync_log_buf() {
 	int i, bytes;
-	printk("syncing...\n");
+	printk("fs_syncing...\n");
 	dptr write_from = __dptr_add(__cp->lend, -__log_buf_size);
 	for (i=0; __log_buf_size-(i*SECTOR_SIZE)>0; i++) {
 		bytes = min(__log_buf_size-(i*SECTOR_SIZE), SECTOR_SIZE);
 		__write(__log_buf+i*SECTOR_SIZE, bytes, __dptr_add(write_from, i*SECTOR_SIZE));
-		/*printk("synced: %d sectors of %d\n", i, __log_buf_size/SECTOR_SIZE);*/
+		/*printk("fs_synced: %d sectors of %d\n", i, __log_buf_size/SECTOR_SIZE);*/
 		//TODO: Ver que no se esta haciendo de manera circular el tema del lend!!!!!!
 	}
 	/*for (i=0; i<__log_buf_size; i++) {
 		__log_buf_list[i] = NULL;
 	}*/
 	__log_buf_size = 0;
-	printk("...synced\n");
+	printk("...fs_synced\n");
 }
 
 void __write(void * data, int bytes, dptr address) {
@@ -652,6 +633,11 @@ int __sizeof_lntype(lntype type) {
 	//TODO: check for more cases!
 	}
 	return -1;//CHECK!
+}
+
+int fs_print_cr() {
+	__print_checkpoint(__cp);
+	return 0;
 }
 
 void __print_checkpoint(checkpoint * cp) {
@@ -763,4 +749,13 @@ void __print_lnode(lnode * lnptr) {
 		break;
 	}
 	printk("\n\t}\n}\n");
+}
+
+int fs_print_lbuf() {
+	int i=0;
+	lnode * lnode;
+	while((lnode=__next_lnode_buf(&i))!=NULL) {
+		__print_lnode(lnode);
+	}
+	return 0;
 }

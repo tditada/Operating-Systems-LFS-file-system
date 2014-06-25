@@ -8,11 +8,13 @@
 #define PROMPT "SOS> "
 
 static char * pwd="/";
-int cd(int argc, char *argv[]);
-int cat(int argc, char *argv[]);
-int list(int argc, char *argv[]);
-int mkdir(int argc, char *argv[]);
-int touch(int argc, char *argv[]);
+static int cd(int argc, char *argv[]);
+static int cat(int argc, char *argv[]);
+static int list(int argc, char *argv[]);
+static int mkdir(int argc, char *argv[]);
+static int touch(int argc, char *argv[]);
+static int format(int argc, char *argv[]);
+
 /*
 #ifndef FS_VARS
 #define FS_VARS*/
@@ -37,15 +39,21 @@ cmdtab[] = {
 	{	"camino_ns",	camino_ns_main },
 	{	"prodcons",		prodcons_main },
 	{	"divz",			divz_main },
-	{	"testfs",		testfs },
-	{	"sync_cr",		sync_cr},
-	{	"sync_lbuf",	sync_lbuf},
+	//FS_COMMANDS
+	{	"format",		format},
+	{ 	"init",			fs_init},
+	{	"sync",			fs_sync},
+	{	"sync_cr",		fs_sync_cr},
+	{	"sync_lbuf",	fs_sync_lbuf},
 	{	"cd",			cd},
 	{	"cat",			cat},
 	{	"list",			list},
 	{	"mkdir",		mkdir},
 	{	"touch",		touch},
-	{ 	"init",			init}
+	{	"fsdata",		fs_data},
+	{	"print_cr",		fs_print_cr},
+	{	"print_lbuf",	fs_print_lbuf},
+	{	"testfs",		testfs }
 };
 
 int
@@ -56,6 +64,7 @@ shell_main(int argc, char **argv) {
 	struct cmdentry *cp;
 	unsigned fg, bg;
 
+/*	fs_init();*/
 	mt_cons_getattr(&fg, &bg);
 	while (true) {
 		mt_cons_setattr(LIGHTGRAY, BLACK);
@@ -64,13 +73,12 @@ shell_main(int argc, char **argv) {
 		/* leer linea de comando, fraccionarla en tokens y armar argv */
 		mt_getline(buf, sizeof buf);
 		nargs = separate(buf, args, NARGS);
-		if (!nargs )
+		if (!nargs)
 			continue;
 		args[nargs] = NULL;
 
 		/* comandos internos */
-		if (strcmp(args[0], "help") == 0 )
-		{
+		if (strcmp(args[0], "help") == 0 ) {
 			printk("Comandos internos:\n");
 			printk("\thelp\n");
 			printk("\texit\n");
@@ -89,8 +97,9 @@ shell_main(int argc, char **argv) {
 
 		if (strcmp(args[0], "reboot") == 0) {
 			*(short *) 0x472 = 0x1234;
-			while (true )
+			while (true){
 				outb(0x64, 0xFE);
+			}
 		}
 
 		/* aplicaciones */
@@ -138,6 +147,11 @@ int cd(int argc, char *argv[]){
 	}
 }
 
+int format(int argc, char *argv[]){
+	fs_creat(49152);
+	return 0;
+}
+
 int cat(int argc, char *argv[]){
 	return fs_cat(argv[1]);
 }
@@ -147,10 +161,10 @@ int list(int argc, char *argv[]){
 }
 
 int mkdir(int argc, char *argv[]){
-	return fs_mkfile(argv[1],FS_DIR, NULL,0); 
+	return fs_mkfile(argv[1], FS_DIR, NULL, 0); 
 }
 
 //Parametros para el touch: nombre de archivo, texto
 int touch(int argc, char *argv[]){
-	return fs_mkfile(argv[1],FS_FILE,argv[2],sizeof(argv[2]+1));
+	return fs_mkfile(argv[1], FS_FILE, argv[2], sizeof(strlen(argv[2])+1));
 }
