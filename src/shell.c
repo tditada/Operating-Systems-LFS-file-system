@@ -7,7 +7,7 @@
 #define NARGS 20
 #define PROMPT "SOS> "
 
-static char * pwd="/";
+
 static int cd(int argc, char *argv[]);
 static int cat(int argc, char *argv[]);
 static int ls(int argc, char *argv[]);
@@ -27,6 +27,7 @@ char __log_buf[FS_BUFFER_SIZE];
 int __log_buf_size = 0;
 int __log_buf_count = 0;
 lnode * __log_buf_list[FS_BUFFER_SIZE/sizeof(lnode)];
+char * pwd="/";
 /*#endif
 */
 static struct cmdentry{
@@ -129,25 +130,26 @@ shell_main(int argc, char **argv) {
 }
 
 int cd(int argc, char *argv[]){
-	//La tabla del CR en RAM siempre está actualizada !!!!
-	//uso bool __search_cr(char * dir) de fs.c
-	//dir la dirección que no sé como pasar.
-	char * dir=argv[1];
-	// cprintk(LIGHTRED, BLACK, "Param: %s\n", dir);
-	if(argc!=2){
-		cprintk(LIGHTRED, BLACK, "Necesita solo %d parametros", 1);
-		return -1;
+	char * dir;
+	if(argc == 1){
+		dir = "/";
+	} else {
+		dir = argv[1];
 	}
 	if(file_existence(dir)){
 		if(dir[0]=='/'){
 			//Direccion absoluta
+			printk("pwd: '%s'->", pwd);
 			pwd=dir;
+			printk("'%s'\n", dir);
 		}else{
-			/*char * newdir;
-			strcat(newdir,pwd);
-			strcat(newdir,"/");
-			strcat(newdir,dir);
-			strcpy(pwd,newdir);*/
+			printk("pwd: '%s'->", pwd);
+			char newdir[MAX_PATH];
+			strcat(newdir, pwd);
+			strcat(newdir, "/");
+			strcat(newdir, dir);
+			strcpy(pwd, newdir);
+			printk("'%s'\n", dir);
 		}
 		return 0;
 	} else{
@@ -165,6 +167,9 @@ int cat(int argc, char *argv[]){
 }
 
 int ls(int argc, char *argv[]){
+	if (argc == 1) {
+		return fs_list(pwd);
+	}
 	return fs_list(argv[1]);
 }
 
