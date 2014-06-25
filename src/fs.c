@@ -407,6 +407,16 @@ bool file_existence(char * dir){
 	return false;
 }
 
+bool file_existence_inoden(int inoden){
+	int i;
+	for(i=0;i<MAX_IMAP;i++){
+		if((__cp->map)[i].inoden==inoden){
+			return true;
+		}	
+	}
+	return false;
+}
+
 
 int __get_inoden(char * filename){
 	int i;
@@ -458,19 +468,6 @@ void * __get_data(inode * inode, ftype * rettype){
 	return data;
 }
 
-//Pasamos el dato del directorio padre
-int __get_inoden_child(ddata * data, char * name) {
-	int i;
-	ddata_entry * map=data->map;
-	ddata_entry current;
-	for(i=0; i<=MAX_DIR_FILES;i++){
-		current=map[i];
-		if(strcmp(current.name,name)){
-			return current.inoden;
-		}
-	}
-	return -1;
-}
 
 /*int __get_cr_entry(char * filename, cr_entry * crep) {
 	int i;
@@ -494,6 +491,89 @@ int __get_fst_dirname(char * filename, char * dir) {
 	memcpy(dir, filename, i);
 	dir[i]='\0';
 	return i;
+}
+
+bool __is_alive(lnode * lnptr){
+	imap * imap;
+	inode * inode;
+	ddata * ddata;
+	lnode * nextlnode;
+	switch(lnptr->type){
+		case FS_IMAP:
+			imap=(imap*)lnptr->data;
+			return __is_imap_alive(imap);
+			break;
+		case FS_INODE:
+			inode=(inode*)lnptr->data;
+			return __is_node_alive(inode);
+			break;
+		case FS_DDATA:
+			//Al tener un solo segmento de datos, revisamos el inodo que está si o si al lado
+			ddata=(ddata*)lnptr->data;
+			nextlnode=__next_lnode(lnptr);
+			inode=(inode*)nextlnode->data;
+			return __is_node_alive(inode);
+			break;
+		case FS_FDATA:
+			fdata=(fdata*)lnptr->data;
+			nextlnode=__next_lnode(lnptr);
+			inode=(inode*)nextlnode->data;
+			return __is_node_alive(inode);
+			break;
+		default:
+			return false;
+			break;
+	}
+}
+
+bool __is_node_alive(inode * inode){
+	imap * imap=__get_imap(inode->num);
+	inode * _inode;
+	if(imap==NULL){
+		return false;
+	}else{
+		_inode=__get_inode(imap,inode->num);
+		if(inode==NULL){
+			return false;
+		}else{
+			return __cmp_inodes(_inode, inode);
+		}
+	}
+}
+
+bool __cmp_inodes(inode * inode1, inode * inode2){
+	return inode1->num==inode2->num && inode1->fsize==inode2->fsize && inode1->type==inode2->type && __cmp_dptr(inode1->idata, inode2->idata);
+}
+
+
+bool __is_imap_alive(imap * imap){
+	int i;
+	cr_entry curr;
+	for(i=0;i<=MAX_IMAP;i++){
+		curr=(__cp->map)[i];
+		if(__cmp_imaps(__get_imap(curr.map),imap)){
+			return false;
+		}
+	}
+	return true;
+}
+
+bool __cmp_imaps(imap * imap1, imap * imap2){
+	int i;
+	imap_entry curr1;
+	imap_entry curr2;
+	for(i=0;i<=MAX_IMAP;i++){
+		curr1=(imap1->map)[i];
+		curr2=(imap2->map)[i];
+		if(!strcmp(curr1.filename,curr2.filename)||!__cmp_dptr(curr1.inode,curr2,inode){
+			return false;
+		}
+	}
+	return true;
+}
+
+bool __cmp_dptr(dptr dptr1, dptr dptr2){
+	return dptr1.offset==dptr2.offset && dptr1.sector==dptr2.sector;
 }
 
 lnode * __next_lnode_buf(int * i) {
